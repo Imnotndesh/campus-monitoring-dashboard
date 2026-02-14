@@ -1,6 +1,6 @@
 import {
     AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    LineChart, Line, BarChart, Bar, Cell, ComposedChart, Legend
+    LineChart, Line, BarChart, Bar, Cell
 } from "recharts"
 import {
     Activity, Calendar, Signal, TrendingDown, Radio, Search, Trash2,
@@ -243,7 +243,7 @@ export default function Analytics() {
                                                 <div>Time</div>
                                                 <div className="text-center">Neighbors</div>
                                                 <div className="text-center">Overlap</div>
-                                                <div className="text-right">Congested</div>
+                                                <div className="text-right">Congested Probes</div>
                                             </div>
 
                                             {/* Data Rows */}
@@ -315,7 +315,7 @@ export default function Analytics() {
                                                     <div>
                                                         <div className="text-xs text-muted-foreground">Latency</div>
                                                         <div className="font-semibold">
-                                                            {ap.avg_latency?.toFixed(1) ?? '--'} ms
+                                                            {fmt(vm.normalizedStats?.latency, " ms")}
                                                         </div>
                                                     </div>
                                                 </div>
@@ -373,44 +373,61 @@ export default function Analytics() {
                             </CardContent>
                         </Card>
 
-                        {/* Roaming Events */}
+                        {/* Roaming / Connection History Card */}
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
-                                    <ArrowDownUp className="h-4 w-4 text-blue-500" /> Roaming Analysis
+                                    <ArrowDownUp className="h-4 w-4 text-blue-500" /> AP Connection History
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                {vm.roaming && vm.roaming.events ? (
+                                {vm.roaming && vm.roaming.length > 0 ? (
                                     <div className="space-y-4">
                                         <div className="flex justify-between text-sm">
-                                            <span className="text-muted-foreground">Total Events:</span>
-                                            <span className="font-semibold">{vm.roaming.total_events}</span>
+                                            <span className="text-muted-foreground">Unique APs Seen:</span>
+                                            <span className="font-semibold">{vm.roaming.length}</span>
                                         </div>
-                                        <div className="flex justify-between text-sm">
-                                            <span className="text-muted-foreground">Avg Latency Delta:</span>
-                                            <span className="font-semibold">
-                                                {vm.roaming.avg_latency_delta?.toFixed(1) || 0} ms
-                                            </span>
-                                        </div>
+
                                         <ScrollArea className="h-[220px]">
-                                            {vm.roaming.events.map((event, i) => (
+                                            {vm.roaming.map((session, i) => (
                                                 <div
                                                     key={i}
-                                                    className="p-2 border rounded mb-2 text-xs space-y-1"
+                                                    className="p-3 border rounded mb-2 text-xs space-y-2 hover:bg-muted/50 transition-colors"
                                                 >
-                                                    <div className="flex items-center gap-2">
-                                                        <WifiOff className="h-3 w-3 text-red-500" />
-                                                        <span className="font-mono">{event.from_ap}</span>
-                                                        <span>→</span>
-                                                        <Wifi className="h-3 w-3 text-green-500" />
-                                                        <span className="font-mono">{event.to_ap}</span>
+                                                    {/* Header: BSSID & Channel */}
+                                                    <div className="flex items-center justify-between">
+                                                        <div className="flex items-center gap-2">
+                                                            <Wifi className="h-3 w-3 text-primary" />
+                                                            <span className="font-mono font-bold">{session.bssid}</span>
+                                                        </div>
+                                                        <Badge variant="outline" className="text-[10px] h-5">
+                                                            CH {session.channel}
+                                                        </Badge>
                                                     </div>
-                                                    <div className="text-muted-foreground">
-                                                        RSSI: {event.rssi_before} → {event.rssi_after} dBm
+
+                                                    {/* Metrics: Signal & Time */}
+                                                    <div className="grid grid-cols-2 gap-2 text-muted-foreground">
+                                                        <div>
+                                                            <span className="block text-[10px] uppercase opacity-70">Avg Signal</span>
+                                                            <span className="font-semibold text-foreground">
+                                                                {session.avg_rssi.toFixed(0)} dBm
+                                                            </span>
+                                                        </div>
+                                                        <div>
+                                                            <span className="block text-[10px] uppercase opacity-70">Samples</span>
+                                                            <span className="font-semibold text-foreground">
+                                                                {session.total_samples}
+                                                            </span>
+                                                        </div>
                                                     </div>
-                                                    <div className="text-muted-foreground">
-                                                        {new Date(event.timestamp).toLocaleString()}
+
+                                                    <div className="pt-2 border-t mt-1 flex justify-between text-[10px] text-muted-foreground">
+                                                        <span>
+                                                            First: {new Date(session.first_seen).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                        </span>
+                                                        <span>
+                                                            Last: {new Date(session.last_seen).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                        </span>
                                                     </div>
                                                 </div>
                                             ))}

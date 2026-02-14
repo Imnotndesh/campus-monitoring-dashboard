@@ -11,8 +11,8 @@ import type {
     APStats,
     CongestionData,
     Anomaly,
-    RoamingEvent,
-    Command
+    Command,
+    RoamingSession,
 } from "./types"
 
 export function useAnalyticsViewModel() {
@@ -161,12 +161,12 @@ export function useAnalyticsViewModel() {
     })
 
     // --- 8. Roaming Analysis ---
-    const { data: roaming } = useQuery<{ events: RoamingEvent[], total_events: number, avg_latency_delta: number }>({
+    const { data: roaming = [] } = useQuery<RoamingSession[]>({
         queryKey: ["roaming", selectedProbe, hours],
         queryFn: async () => {
-            if (selectedProbe === 'all') return null
+            if (selectedProbe === 'all') return []
             const res = await fetch(`/api/v1/analytics/roaming/${selectedProbe}?hours=${hours}`)
-            if (!res.ok) return null
+            if (!res.ok) return []
             return res.json()
         },
         enabled: selectedProbe !== 'all'
@@ -256,9 +256,7 @@ export function useAnalyticsViewModel() {
         const rssi = getVal(['avg_rssi', 'rssi'])
         const latency = getVal(['avg_latency', 'latency'])
         const loss = getVal(['avg_packet_loss', 'packet_loss'])
-        const score = getVal(['stability_score', 'stabilityScore'])
-
-        // Treat 0 RSSI as invalid
+        const score = getVal(['health_score', 'stability_score'])
         const validRssi = (rssi && rssi < 0) ? rssi : null
 
         return {

@@ -20,15 +20,6 @@ export type Anomaly = {
     probe_id?: string
 }
 
-export type RoamingEvent = {
-    from_ap: string
-    to_ap: string
-    timestamp: string
-    rssi_before: number
-    rssi_after: number
-    latency_delta: number
-}
-
 export type APStats = {
     bssid: string
     avg_rssi: number
@@ -71,4 +62,13 @@ export type NetworkHealth = {
     avg_latency: number
     avg_packet_loss: number
     stability_score: number
+}
+export type RoamingSession = {
+    bssid: string
+    first_seen: string
+    last_seen: string
+    probes_connected: number
+    avg_rssi: number
+    channel: number
+    total_samples: number
 }
