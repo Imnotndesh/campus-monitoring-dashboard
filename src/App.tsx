@@ -4,7 +4,7 @@ import Dashboard from "@/pages/Dashboard"
 import Probes from "@/pages/Probes"
 import Settings from "@/pages/Settings"
 import Alerts from "@/pages/Alerts"
-import Analytics from "@/pages/Analytics"
+import Analytics from "@/pages/analytics/Analytics"
 
 export default function App() {
     return (
