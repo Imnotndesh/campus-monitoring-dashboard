@@ -191,11 +191,15 @@ export function useAnalyticsViewModel() {
         queryKey: ["deep_scans", selectedProbe],
         queryFn: async () => {
             if (selectedProbe === "all") return []
-            const res = await fetch(`/api/v1/commands?probe_id=${selectedProbe}&limit=50`)
+            const res = await fetch(`/api/v1/commands/probe/${selectedProbe}?limit=50`)
+
             if (!res.ok) return []
-            const cmds = await res.json()
+
+            const raw = await res.json()
+            const cmds = Array.isArray(raw) ? raw : []
+
             return cmds
-                .filter((c: Command) => c.command_type === 'deep_scan')
+                .filter((c: any) => c.command_type === 'deep_scan')
                 .sort((a: Command, b: Command) =>
                     new Date(b.issued_at).getTime() - new Date(a.issued_at).getTime()
                 )
