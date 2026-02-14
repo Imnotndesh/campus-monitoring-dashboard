@@ -1,5 +1,15 @@
 import React from "react"
-import { AlertCircle, AlertTriangle, ArrowDownUp, Radio, Signal, TrendingDown, Wifi, Zap } from "lucide-react"
+import {
+    Activity,
+    AlertCircle,
+    AlertTriangle,
+    ArrowDownUp,
+    Calendar,
+    Signal,
+    TrendingDown,
+    Wifi,
+    Zap
+} from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
@@ -46,17 +56,45 @@ export function StatBox({ label, value, icon }: { label: string; value: string; 
 }
 
 export function DeepScanVisualizer({ scan }: { scan: Command }) {
-    const data = scan.result || {}
-    const isError = !data.rssi && !data.snr && !data.channel
+    // 1. Safe Parsing
+    const raw = scan.result || {}
+    const data = typeof raw === 'string' ? JSON.parse(raw) : raw
+
+    // 2. Exact Key Mapping based on your Postman response
+    // { bssid, ch, dns, epoch, lat, loss, noise, phy, pid, qual, rssi, snr, tput, ts, type, up, util }
+    const {
+        bssid,
+        ch: channel,
+        lat: latency,
+        loss: packetLoss,
+        noise: noiseFloor,
+        phy: phyMode,
+        qual: linkQuality,
+        rssi,
+        snr,
+        tput: throughput,
+        util: utilization,
+        up: uptime
+    } = data
+
+    // 3. Formatting Helpers
+    const formatUptime = (seconds: number) => {
+        if (!seconds) return '--'
+        const h = Math.floor(seconds / 3600)
+        const m = Math.floor((seconds % 3600) / 60)
+        return `${h}h ${m}m`
+    }
+
+    const isError = !rssi && !channel && !bssid
 
     if (isError) {
         return (
-            <div className="p-6 flex flex-col items-center justify-center h-full">
-                <AlertCircle className="h-8 w-8 text-amber-500 mb-2" />
-                <p className="text-muted-foreground mb-4">Scan data unavailable or malformed</p>
-                <pre className="bg-muted p-4 rounded text-xs max-w-full overflow-auto">
-                    {JSON.stringify(data, null, 2)}
-                </pre>
+            <div className="p-6 flex flex-col items-center justify-center h-full text-center">
+                <AlertCircle className="h-8 w-8 text-muted-foreground mb-2 opacity-50" />
+                <p className="text-muted-foreground mb-2">Analysis data unavailable</p>
+                <div className="text-[10px] text-muted-foreground bg-muted p-2 rounded max-w-[200px] truncate">
+                    ID: {scan.id} | Status: {scan.status}
+                </div>
             </div>
         )
     }
@@ -65,49 +103,90 @@ export function DeepScanVisualizer({ scan }: { scan: Command }) {
         q > 80 ? "bg-emerald-500" : q > 50 ? "bg-yellow-500" : "bg-red-500"
 
     return (
-        <div className="flex flex-col h-full">
-            <CardHeader className="py-3 px-6 bg-muted/30 border-b flex justify-between flex-row items-center">
-                <div className="flex gap-2 items-center">
-                    <Wifi className="h-5 w-5 text-primary" />
-                    <span className="font-semibold">RF Analysis</span>
+        <div className="flex flex-col h-full bg-card">
+            {/* Header: Identity */}
+            <div className="py-3 px-6 border-b flex justify-between items-center bg-muted/20">
+                <div className="flex flex-col">
+                    <span className="text-xs font-mono text-muted-foreground uppercase">Target AP</span>
+                    <span className="font-bold flex items-center gap-2">
+                        {bssid || 'Unknown BSSID'}
+                        {phyMode && <Badge variant="secondary" className="text-[10px] h-5">{phyMode}</Badge>}
+                    </span>
                 </div>
-                <Badge variant="outline">CH {data.channel || '--'}</Badge>
-            </CardHeader>
+                <div className="text-right">
+                    <span className="text-xs text-muted-foreground block">Channel</span>
+                    <span className="text-xl font-bold font-mono">{channel ?? '--'}</span>
+                </div>
+            </div>
+
             <ScrollArea className="flex-1">
                 <div className="p-6 space-y-6">
-                    {data.linkQuality !== undefined && (
-                        <div className="flex flex-col items-center p-4 border rounded bg-card relative overflow-hidden">
-                            <div className="absolute left-0 top-0 w-1 h-full bg-primary"></div>
-                            <span className="text-xs uppercase text-muted-foreground">Link Quality</span>
-                            <span className="text-4xl font-bold">{data.linkQuality?.toFixed(0)}/100</span>
+                    {/* Section 1: Connection Health (Link Quality) */}
+                    {linkQuality !== undefined && (
+                        <div className="relative pt-2">
+                            <div className="flex justify-between items-end mb-2">
+                                <span className="text-sm font-medium text-muted-foreground">Link Quality</span>
+                                <span className="text-2xl font-bold">{Number(linkQuality).toFixed(0)}%</span>
+                            </div>
                             <Progress
-                                value={data.linkQuality}
-                                className={`h-2 w-full mt-2 ${getQualityColor(data.linkQuality)}`}
+                                value={Number(linkQuality)}
+                                className={`h-3 ${getQualityColor(Number(linkQuality))}`}
                             />
                         </div>
                     )}
-                    <div className="grid grid-cols-2 gap-4">
-                        {data.rssi !== undefined && (
-                            <StatBox label="Signal" value={`${data.rssi} dBm`} icon={<Signal className="h-4 w-4" />} />
-                        )}
-                        {data.noiseFloor !== undefined && (
-                            <StatBox label="Noise" value={`${data.noiseFloor} dBm`} icon={<TrendingDown className="h-4 w-4" />} />
-                        )}
-                        {data.tcpThroughput !== undefined && (
+
+                    {/* Section 2: RF Signal Metrics */}
+                    <div>
+                        <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3 flex items-center gap-2">
+                            <Signal className="h-3 w-3" /> RF Environment
+                        </h4>
+                        <div className="grid grid-cols-3 gap-3">
+                            <StatBox label="Signal" value={rssi ? `${rssi} dBm` : '--'} icon={<Wifi className="h-4 w-4" />} />
+                            <StatBox label="Noise Floor" value={noiseFloor ? `${noiseFloor} dBm` : '--'} icon={<TrendingDown className="h-4 w-4" />} />
+                            <StatBox label="SNR" value={snr ? `${snr} dB` : '--'} icon={<Zap className="h-4 w-4" />} />
+                        </div>
+                    </div>
+
+                    {/* Section 3: Performance Metrics */}
+                    <div>
+                        <h4 className="text-xs font-semibold text-muted-foreground uppercase mb-3 flex items-center gap-2">
+                            <Activity className="h-3 w-3" /> Performance
+                        </h4>
+                        <div className="grid grid-cols-3 gap-3">
                             <StatBox
                                 label="Throughput"
-                                value={`${(data.tcpThroughput / 1000).toFixed(2)} Mbps`}
+                                value={throughput ? `${throughput} kbps` : '--'}
                                 icon={<ArrowDownUp className="h-4 w-4" />}
                             />
+                            <StatBox
+                                label="Latency"
+                                value={latency !== undefined ? `${latency} ms` : '--'}
+                                icon={<Calendar className="h-4 w-4" />}
+                            />
+                            <StatBox
+                                label="Packet Loss"
+                                value={packetLoss !== undefined ? `${packetLoss}%` : '--'}
+                                icon={<AlertTriangle className="h-4 w-4" />}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Section 4: Spectrum Health & Uptime */}
+                    <div className="grid grid-cols-2 gap-4">
+                        {utilization !== undefined && (
+                            <div className="bg-muted/10 p-4 rounded border border-dashed col-span-2 md:col-span-1">
+                                <div className="flex justify-between items-center mb-1">
+                                    <span className="text-xs font-medium">Channel Util</span>
+                                    <span className="text-sm font-bold">{Number(utilization).toFixed(1)}%</span>
+                                </div>
+                                <Progress value={Number(utilization)} className="h-1.5 bg-muted" />
+                            </div>
                         )}
-                        {data.packetLoss !== undefined && (
-                            <StatBox label="Loss" value={`${data.packetLoss}%`} icon={<AlertTriangle className="h-4 w-4" />} />
-                        )}
-                        {data.snr !== undefined && (
-                            <StatBox label="SNR" value={`${data.snr} dB`} icon={<Zap className="h-4 w-4" />} />
-                        )}
-                        {data.phyMode && (
-                            <StatBox label="PHY Mode" value={data.phyMode} icon={<Radio className="h-4 w-4" />} />
+                        {uptime !== undefined && (
+                            <div className="bg-muted/10 p-4 rounded border border-dashed col-span-2 md:col-span-1 flex flex-col justify-center">
+                                <div className="text-xs font-medium text-muted-foreground mb-1">Device Uptime</div>
+                                <div className="text-lg font-bold">{formatUptime(uptime)}</div>
+                            </div>
                         )}
                     </div>
                 </div>
