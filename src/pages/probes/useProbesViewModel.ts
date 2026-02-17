@@ -1,5 +1,5 @@
 // useProbesViewModel.ts
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import type { Probe, ProbeFormValues } from "./types"
@@ -8,8 +8,10 @@ export function useProbesViewModel() {
     const queryClient = useQueryClient()
     const [selectedProbe, setSelectedProbe] = useState<Probe | null>(null)
     const [isAddOpen, setIsAddOpen] = useState(false)
+    const [isAdoptOpen, setIsAdoptOpen] = useState(false)
     const [isSheetOpen, setIsSheetOpen] = useState(false)
     const [statusOutput, setStatusOutput] = useState<any>(null)
+    const [configOutput, setConfigOutput] = useState<any>(null)
     const [configDialogType, setConfigDialogType] = useState<'wifi' | 'mqtt' | 'rename' | 'ota' | null>(null)
 
     const { data: probes = [], isLoading } = useQuery<Probe[]>({
@@ -30,17 +32,52 @@ export function useProbesViewModel() {
             return res.json()
         },
         enabled: !!selectedProbe,
-        refetchInterval: 5000
+        refetchInterval: 2000
     })
+
+    // Auto-update status and config when history changes
+    useEffect(() => {
+        if (!commandHistory || commandHistory.length === 0) return
+
+        const latestStatus = commandHistory.find((cmd: any) =>
+            cmd.command_type === 'get_status' && cmd.status === 'completed' && cmd.result
+        )
+        if (latestStatus?.result) {
+            setStatusOutput(latestStatus.result)
+        }
+
+        const latestConfig = commandHistory.find((cmd: any) =>
+            cmd.command_type === 'get_config' && cmd.status === 'completed' && cmd.result
+        )
+        if (latestConfig?.result) {
+            setConfigOutput(latestConfig.result)
+        }
+    }, [commandHistory])
 
     const pingMutation = useMutation({
         mutationFn: async (probeId: string) => {
-            const res = await fetch(`/api/v1/probes/${probeId}/ping`, { method: "POST" })
-            if (!res.ok) throw new Error("Probe Unreachable")
+            const res = await fetch("/api/v1/commands", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    probe_id: probeId,
+                    command_type: "ping",
+                    payload: {}
+                })
+            })
+            if (!res.ok) {
+                const errorText = await res.text()
+                throw new Error(errorText || "Probe Unreachable")
+            }
             return res.json()
         },
-        onSuccess: () => toast.success("Probe is Online and responding"),
-        onError: () => toast.error("Probe is Offline or Unreachable")
+        onSuccess: () => {
+            toast.success("Ping sent - check history for response")
+            queryClient.invalidateQueries({ queryKey: ["probe_history"] })
+        },
+        onError: (err: Error) => {
+            toast.error(`Ping failed: ${err.message}`)
+        }
     })
 
     const commandMutation = useMutation({
@@ -62,8 +99,8 @@ export function useProbesViewModel() {
         },
         onSuccess: (data, variables) => {
             const commandNames: Record<string, string> = {
-                'get_status': 'Status Retrieved',
-                'get_config': 'Config Retrieved',
+                'get_status': 'Fetching Status...',
+                'get_config': 'Fetching Config...',
                 'deep_scan': 'Deep Scan Started',
                 'restart': 'Reboot Initiated',
                 'factory_reset': 'Factory Reset Initiated',
@@ -74,11 +111,6 @@ export function useProbesViewModel() {
             }
 
             toast.success(commandNames[variables.type] || `Command Sent: ${variables.type}`)
-
-            if (variables.type === 'get_status' && data.result) {
-                setStatusOutput(data.result)
-            }
-
             queryClient.invalidateQueries({ queryKey: ["probe_history"] })
         },
         onError: (err: Error) => {
@@ -146,8 +178,8 @@ export function useProbesViewModel() {
 
     const updateMutation = useMutation({
         mutationFn: async (data: Partial<Probe>) => {
-            if (!selectedProbe) return
-            const res = await fetch(`/api/v1/probes/${selectedProbe.probe_id}`, {
+            if (!data.probe_id) return
+            const res = await fetch(`/api/v1/probes/${data.probe_id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data)
@@ -163,12 +195,18 @@ export function useProbesViewModel() {
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
             const res = await fetch(`/api/v1/probes/${id}`, { method: "DELETE" })
-            if (!res.ok) throw new Error("Delete failed")
+            if (!res.ok) {
+                const text = await res.text()
+                throw new Error(text || "Delete failed")
+            }
         },
         onSuccess: () => {
             toast.success("Probe Deleted")
             setIsSheetOpen(false)
             queryClient.invalidateQueries({ queryKey: ["probes"] })
+        },
+        onError: (err: Error) => {
+            toast.error(`Delete failed: ${err.message}`)
         }
     })
 
@@ -177,12 +215,15 @@ export function useProbesViewModel() {
         isLoading,
         selectedProbe,
         isAddOpen,
+        isAdoptOpen,
         isSheetOpen,
         commandHistory,
         statusOutput,
+        configOutput,
         configDialogType,
         setSelectedProbe,
         setIsAddOpen,
+        setIsAdoptOpen,
         setIsSheetOpen,
         setStatusOutput,
         setConfigDialogType,

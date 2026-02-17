@@ -4,7 +4,8 @@ import {
     Activity, Clock, MapPin, MoreVertical, Wifi,
     ShieldCheck, RefreshCw, RotateCcw, Loader2,
     Terminal, AlertTriangle, Download, Network, Cpu,
-    Settings, Zap, Trash2, Edit3, Radio
+    Settings, Zap, Trash2, Edit3, Radio,
+    UserPlus, AlertCircle
 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -26,6 +27,7 @@ import {
 } from "@/components/ui/dialog"
 import type { Probe, ProbeCommand } from "./types"
 import { Progress } from "@/components/ui/progress"
+import {useQuery} from "@tanstack/react-query";
 
 export function ProbeStatusBadge({ status }: { status: string }) {
     const styles = {
@@ -117,11 +119,53 @@ function ProbeStatusDashboard({ data }: { data: any }) {
     )
 }
 
+export function UnknownProbeCard({ probe, onAdopt }: { probe: any, onAdopt: () => void }) {
+    return (
+        <Card className="border-dashed border-2 border-yellow-500/50 hover:border-yellow-500 transition-colors">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-yellow-500" />
+                    <Badge variant="outline" className="text-yellow-600">Unknown</Badge>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-3">
+                    <div>
+                        <p className="text-sm font-medium">Probe ID</p>
+                        <p className="text-xl font-bold">{probe.probe_id}</p>
+                    </div>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                        <p>Last seen: {new Date(probe.last_seen).toLocaleString()}</p>
+                        {probe.ip_address && <p>IP: {probe.ip_address}</p>}
+                    </div>
+                    <Button onClick={onAdopt} className="w-full" variant="outline">
+                        <UserPlus className="mr-2 h-4 w-4" /> Adopt & Configure
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
+
 export function ProbeCard({ probe, onClick, onDelete }: {
     probe: Probe,
     onClick: () => void,
     onDelete: () => void
 }) {
+    const { data: pingStatus } = useQuery({
+        queryKey: ['ping-status', probe.probe_id],
+        queryFn: async () => {
+            const res = await fetch(`/api/v1/probes/${probe.probe_id}/ping-status`)
+            if (!res.ok) return { online: false }
+            return res.json()
+        },
+        refetchInterval: 10000
+    })
+
+    const getStatusColor = () => {
+        if (!pingStatus) return 'bg-gray-500'
+        return pingStatus.online ? 'bg-green-500' : 'bg-yellow-500'
+    }
     return (
         <Card className="hover:shadow-md transition-all cursor-pointer group" onClick={onClick}>
             <CardHeader className="flex flex-row items-start justify-between pb-2">
@@ -129,6 +173,9 @@ export function ProbeCard({ probe, onClick, onDelete }: {
                     <CardTitle className="text-base font-bold flex items-center gap-2">
                         <Wifi className="h-4 w-4 text-primary" />
                         {probe.probe_id}
+                        <div className="flex items-center gap-2">
+                            <div className={`h-2 w-2 rounded-full ${getStatusColor()} animate-pulse`} />
+                        </div>
                     </CardTitle>
                     <CardDescription className="flex items-center gap-1 text-xs">
                         <MapPin className="h-3 w-3" /> {probe.location || "Unassigned"}
@@ -157,7 +204,6 @@ export function ProbeCard({ probe, onClick, onDelete }: {
             </CardHeader>
             <CardContent>
                 <div className="flex justify-between items-center mt-2">
-                    <ProbeStatusBadge status={probe.status} />
                     <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Last Seen">
                         <Clock className="h-3 w-3" />
                         {new Date(probe.last_seen).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
@@ -175,18 +221,21 @@ export function ProbeControls({
                                   sendCommand,
                                   isSending,
                                   statusOutput,
+                                  configOutput,
                                   onConfigDialogOpen
                               }: {
-    probeId: string,
-    ping: () => void,
-    isPinging: boolean,
-    sendCommand: (args: {id: string, type: string, payload?: any}) => void,
-    isSending: boolean,
-    statusOutput: any,
+    probeId: string
+    ping: () => void
+    isPinging: boolean
+    sendCommand: (params: any) => void
+    isSending: boolean
+    statusOutput: any
+    configOutput: any
     onConfigDialogOpen: (type: 'wifi' | 'mqtt' | 'rename' | 'ota') => void
 }) {
     return (
         <div className="space-y-6 py-4">
+            {/* 1. Status Dashboard */}
             {statusOutput ? (
                 <ProbeStatusDashboard data={statusOutput} />
             ) : (
@@ -204,6 +253,43 @@ export function ProbeControls({
                 </div>
             )}
 
+            {/* 2. Config Output Display (Merged from Version A) */}
+            {configOutput && (
+                <Card className="border-blue-200 bg-blue-50/50">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-sm flex items-center gap-2">
+                            <Terminal className="h-4 w-4 text-blue-500" />
+                            Device Configuration
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-xs font-mono">
+                        <div className="flex justify-between border-b pb-1">
+                            <span className="text-muted-foreground">Probe ID:</span>
+                            <span className="font-bold">{configOutput.probe_id}</span>
+                        </div>
+                        {configOutput.wifi && (
+                            <div className="flex justify-between border-b pb-1">
+                                <span className="text-muted-foreground">WiFi SSID:</span>
+                                <span>{configOutput.wifi.ssid}</span>
+                            </div>
+                        )}
+                        {configOutput.mqtt && (
+                            <div className="flex justify-between border-b pb-1">
+                                <span className="text-muted-foreground">MQTT Broker:</span>
+                                <span>{configOutput.mqtt.broker}:{configOutput.mqtt.port}</span>
+                            </div>
+                        )}
+                        {configOutput.version && (
+                            <div className="flex justify-between">
+                                <span className="text-muted-foreground">Firmware:</span>
+                                <span>v{configOutput.version}</span>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* 3. Quick Actions */}
             <div className="space-y-3">
                 <h4 className="text-xs font-bold uppercase text-muted-foreground">Quick Actions</h4>
                 <div className="grid grid-cols-2 gap-3">
@@ -223,7 +309,7 @@ export function ProbeControls({
                         onClick={ping}
                         disabled={isPinging}
                     >
-                        {isPinging ? <Loader2 className="h-5 w-5 animate-spin"/> : <ShieldCheck className="h-5 w-5 text-green-600"/>}
+                        {isPinging ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShieldCheck className="h-5 w-5 text-green-600" />}
                         <span className="text-xs">Ping Check</span>
                     </Button>
 
@@ -249,6 +335,7 @@ export function ProbeControls({
                 </div>
             </div>
 
+            {/* 4. Configuration Actions */}
             <div className="space-y-3">
                 <h4 className="text-xs font-bold uppercase text-muted-foreground">Configuration</h4>
                 <div className="grid grid-cols-1 gap-2">
@@ -294,13 +381,14 @@ export function ProbeControls({
                 </div>
             </div>
 
+            {/* 5. System Control */}
             <div className="space-y-3">
                 <h4 className="text-xs font-bold uppercase text-muted-foreground">System Control</h4>
                 <Button
                     variant="secondary"
                     className="w-full justify-start"
                     onClick={() => {
-                        if(confirm("Reboot this probe?")) sendCommand({ id: probeId, type: 'restart', payload: { delay: 2000 } })
+                        if (confirm("Reboot this probe?")) sendCommand({ id: probeId, type: 'restart', payload: { delay: 2000 } })
                     }}
                     disabled={isSending}
                 >
@@ -309,6 +397,7 @@ export function ProbeControls({
                 </Button>
             </div>
 
+            {/* 6. Danger Zone */}
             <div className="pt-6 border-t mt-6">
                 <h4 className="text-xs font-bold text-red-500 uppercase mb-3 flex items-center gap-2">
                     <AlertTriangle className="h-3 w-3" /> Danger Zone
@@ -317,7 +406,7 @@ export function ProbeControls({
                     variant="destructive"
                     className="w-full justify-start"
                     onClick={() => {
-                        if(confirm("CRITICAL WARNING: This will factory reset the probe and wipe all configuration. Continue?")) {
+                        if (confirm("CRITICAL WARNING: This will factory reset the probe and wipe all configuration. Continue?")) {
                             sendCommand({ id: probeId, type: 'factory_reset' })
                         }
                     }}

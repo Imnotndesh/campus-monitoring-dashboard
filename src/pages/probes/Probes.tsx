@@ -1,6 +1,6 @@
 // Probes.tsx
 import {
-    Plus, Search, Save, MapPin
+    Plus, Search, Save, MapPin, AlertCircle, UserPlus
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -9,12 +9,45 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Card, CardContent, CardHeader } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 
 import { useProbesViewModel } from "./useProbesViewModel"
 import { ProbeCard, ProbeControls, CommandHistoryList, ConfigDialogs } from "./components"
 
+function UnknownProbeCard({ probe, onAdopt }: { probe: any, onAdopt: () => void }) {
+    return (
+        <Card className="border-dashed border-2 border-yellow-500/50 hover:border-yellow-500 transition-colors">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <div className="flex items-center gap-2">
+                    <AlertCircle className="h-4 w-4 text-yellow-500" />
+                    <Badge variant="outline" className="text-yellow-600">Unknown</Badge>
+                </div>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-3">
+                    <div>
+                        <p className="text-sm font-medium">Probe ID</p>
+                        <p className="text-xl font-bold">{probe.probe_id}</p>
+                    </div>
+                    <div className="text-xs text-muted-foreground space-y-1">
+                        <p>Last seen: {new Date(probe.last_seen).toLocaleString()}</p>
+                        {probe.ip_address && <p>IP: {probe.ip_address}</p>}
+                    </div>
+                    <Button onClick={onAdopt} className="w-full" variant="outline">
+                        <UserPlus className="mr-2 h-4 w-4" /> Adopt & Configure
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
+    )
+}
+
 export default function Probes() {
     const vm = useProbesViewModel()
+
+    const adoptedProbes = vm.probes.filter(p => p.location && p.location !== 'Unknown')
+    const unknownProbes = vm.probes.filter(p => !p.location || p.location === 'Unknown')
 
     const handleConfigSubmit = (data: any) => {
         if (!vm.configDialogType) return
@@ -41,47 +74,68 @@ export default function Probes() {
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input placeholder="Search probes..." className="pl-8" />
                     </div>
-                    <Button onClick={() => vm.setIsAddOpen(true)}>
-                        <Plus className="mr-2 h-4 w-4" /> Register Probe
-                    </Button>
                 </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {vm.probes.map((probe) => (
-                    <ProbeCard
-                        key={probe.probe_id}
-                        probe={probe}
-                        onClick={() => {
-                            vm.setSelectedProbe(probe)
-                            vm.setIsSheetOpen(true)
-                            vm.setStatusOutput(null)
-                        }}
-                        onDelete={() => vm.deleteProbe(probe.probe_id)}
-                    />
-                ))}
-            </div>
+            {unknownProbes.length > 0 && (
+                <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                        <AlertCircle className="h-5 w-5 text-yellow-500" />
+                        <h3 className="text-lg font-semibold">Unknown Probes - Requires Configuration</h3>
+                        <Badge variant="secondary">{unknownProbes.length}</Badge>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {unknownProbes.map((probe) => (
+                            <UnknownProbeCard
+                                key={probe.probe_id}
+                                probe={probe}
+                                onAdopt={() => {
+                                    vm.setSelectedProbe(probe)
+                                    vm.setIsAdoptOpen(true)
+                                }}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
 
-            <Dialog open={vm.isAddOpen} onOpenChange={vm.setIsAddOpen}>
+            {adoptedProbes.length > 0 && (
+                <div className="space-y-3">
+                    <h3 className="text-lg font-semibold">Active Probes</h3>
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        {adoptedProbes.map((probe) => (
+                            <ProbeCard
+                                key={probe.probe_id}
+                                probe={probe}
+                                onClick={() => {
+                                    vm.setSelectedProbe(probe)
+                                    vm.setIsSheetOpen(true)
+                                    vm.setStatusOutput(null)
+                                }}
+                                onDelete={() => vm.deleteProbe(probe.probe_id)}
+                            />
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            <Dialog open={vm.isAdoptOpen} onOpenChange={vm.setIsAdoptOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Register New Probe</DialogTitle>
+                        <DialogTitle>Adopt Probe: {vm.selectedProbe?.probe_id}</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={(e) => {
                         e.preventDefault()
                         const fd = new FormData(e.currentTarget)
-                        vm.addProbe({
-                            probe_id: fd.get('probe_id') as string,
+                        vm.updateProbe({
+                            probe_id: vm.selectedProbe!.probe_id,
                             location: fd.get('location') as string,
                             building: fd.get('building') as string,
                             floor: fd.get('floor') as string
                         })
+                        vm.setIsAdoptOpen(false)
                     }}>
                         <div className="grid gap-4 py-4">
-                            <div className="grid gap-2">
-                                <Label>Probe ID (Serial)</Label>
-                                <Input name="probe_id" placeholder="e.g. PROBE-001" required />
-                            </div>
                             <div className="grid gap-2">
                                 <Label>Location</Label>
                                 <Input name="location" placeholder="e.g. Server Room" required />
@@ -98,7 +152,7 @@ export default function Probes() {
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button type="submit">Register Device</Button>
+                            <Button type="submit">Adopt Probe</Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
