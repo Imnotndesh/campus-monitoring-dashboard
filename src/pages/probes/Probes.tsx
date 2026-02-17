@@ -1,4 +1,3 @@
-// Probes.tsx
 import {
     Plus, Search, Save, MapPin, AlertCircle, UserPlus
 } from "lucide-react"
@@ -9,61 +8,42 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Card, CardContent, CardHeader } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 
 import { useProbesViewModel } from "./useProbesViewModel"
 import { ProbeCard, ProbeControls, CommandHistoryList, ConfigDialogs } from "./components"
 
-function UnknownProbeCard({ probe, onAdopt }: { probe: any, onAdopt: () => void }) {
-    return (
-        <Card className="border-dashed border-2 border-yellow-500/50 hover:border-yellow-500 transition-colors">
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4 w-4 text-yellow-500" />
-                    <Badge variant="outline" className="text-yellow-600">Unknown</Badge>
-                </div>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-3">
-                    <div>
-                        <p className="text-sm font-medium">Probe ID</p>
-                        <p className="text-xl font-bold">{probe.probe_id}</p>
-                    </div>
-                    <div className="text-xs text-muted-foreground space-y-1">
-                        <p>Last seen: {new Date(probe.last_seen).toLocaleString()}</p>
-                        {probe.ip_address && <p>IP: {probe.ip_address}</p>}
-                    </div>
-                    <Button onClick={onAdopt} className="w-full" variant="outline">
-                        <UserPlus className="mr-2 h-4 w-4" /> Adopt & Configure
-                    </Button>
-                </div>
-            </CardContent>
-        </Card>
-    )
-}
-
 export default function Probes() {
     const vm = useProbesViewModel()
 
-    const adoptedProbes = vm.probes.filter(p => p.location && p.location !== 'Unknown')
-    const unknownProbes = vm.probes.filter(p => !p.location || p.location === 'Unknown')
+    // Handle Config Form Submit
+    const handleConfigSubmit = (e: React.FormEvent) => {
+        e.preventDefault()
+        const fd = new FormData(e.target as HTMLFormElement)
 
-    const handleConfigSubmit = (data: any) => {
-        if (!vm.configDialogType) return
-
-        const commandMap = {
-            'wifi': 'set_wifi',
-            'mqtt': 'set_mqtt',
-            'rename': 'rename_probe',
-            'ota': 'ota_update'
-        } as const
-
-        vm.sendConfigCommand(commandMap[vm.configDialogType], data)
+        let data: any = {}
+        if (vm.configDialogType === 'wifi') {
+            data = { ssid: fd.get('ssid'), password: fd.get('password') }
+            vm.sendConfigCommand('set_wifi', data)
+        } else if (vm.configDialogType === 'mqtt') {
+            data = {
+                broker: fd.get('broker'),
+                port: parseInt(fd.get('port') as string),
+                user: fd.get('user'),
+                password: fd.get('password')
+            }
+            vm.sendConfigCommand('set_mqtt', data)
+        } else if (vm.configDialogType === 'rename') {
+            data = { new_id: fd.get('new_id') }
+            vm.sendConfigCommand('rename_probe', data)
+        } else if (vm.configDialogType === 'ota') {
+            data = { url: fd.get('url') }
+            vm.sendConfigCommand('ota_update', data)
+        }
     }
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
+            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight">Probe Fleet</h2>
@@ -74,68 +54,49 @@ export default function Probes() {
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input placeholder="Search probes..." className="pl-8" />
                     </div>
+                    <Button onClick={() => vm.setIsAddOpen(true)}>
+                        <Plus className="mr-2 h-4 w-4" /> Register Probe
+                    </Button>
                 </div>
             </div>
 
-            {unknownProbes.length > 0 && (
-                <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                        <AlertCircle className="h-5 w-5 text-yellow-500" />
-                        <h3 className="text-lg font-semibold">Unknown Probes - Requires Configuration</h3>
-                        <Badge variant="secondary">{unknownProbes.length}</Badge>
-                    </div>
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        {unknownProbes.map((probe) => (
-                            <UnknownProbeCard
-                                key={probe.probe_id}
-                                probe={probe}
-                                onAdopt={() => {
-                                    vm.setSelectedProbe(probe)
-                                    vm.setIsAdoptOpen(true)
-                                }}
-                            />
-                        ))}
-                    </div>
-                </div>
-            )}
+            {/* Probe Grid */}
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {vm.probes.map((probe) => (
+                    <ProbeCard
+                        key={probe.probe_id}
+                        probe={probe}
+                        onClick={() => {
+                            vm.setSelectedProbe(probe)
+                            vm.setIsSheetOpen(true)
+                            // Clean outputs not needed as VM handles fetching now
+                        }}
+                        onDelete={() => vm.deleteProbe(probe.probe_id)}
+                    />
+                ))}
+            </div>
 
-            {adoptedProbes.length > 0 && (
-                <div className="space-y-3">
-                    <h3 className="text-lg font-semibold">Active Probes</h3>
-                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        {adoptedProbes.map((probe) => (
-                            <ProbeCard
-                                key={probe.probe_id}
-                                probe={probe}
-                                onClick={() => {
-                                    vm.setSelectedProbe(probe)
-                                    vm.setIsSheetOpen(true)
-                                    vm.setStatusOutput(null)
-                                }}
-                                onDelete={() => vm.deleteProbe(probe.probe_id)}
-                            />
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            <Dialog open={vm.isAdoptOpen} onOpenChange={vm.setIsAdoptOpen}>
+            {/* ADD PROBE DIALOG */}
+            <Dialog open={vm.isAddOpen} onOpenChange={vm.setIsAddOpen}>
                 <DialogContent>
                     <DialogHeader>
-                        <DialogTitle>Adopt Probe: {vm.selectedProbe?.probe_id}</DialogTitle>
+                        <DialogTitle>Register New Probe</DialogTitle>
                     </DialogHeader>
                     <form onSubmit={(e) => {
                         e.preventDefault()
                         const fd = new FormData(e.currentTarget)
-                        vm.updateProbe({
-                            probe_id: vm.selectedProbe!.probe_id,
+                        vm.addProbe({
+                            probe_id: fd.get('probe_id') as string,
                             location: fd.get('location') as string,
                             building: fd.get('building') as string,
                             floor: fd.get('floor') as string
                         })
-                        vm.setIsAdoptOpen(false)
                     }}>
                         <div className="grid gap-4 py-4">
+                            <div className="grid gap-2">
+                                <Label>Probe ID (Serial)</Label>
+                                <Input name="probe_id" placeholder="e.g. PROBE-001" required />
+                            </div>
                             <div className="grid gap-2">
                                 <Label>Location</Label>
                                 <Input name="location" placeholder="e.g. Server Room" required />
@@ -152,12 +113,13 @@ export default function Probes() {
                             </div>
                         </div>
                         <DialogFooter>
-                            <Button type="submit">Adopt Probe</Button>
+                            <Button type="submit">Register Device</Button>
                         </DialogFooter>
                     </form>
                 </DialogContent>
             </Dialog>
 
+            {/* PROBE DETAILS SHEET */}
             <Sheet open={vm.isSheetOpen} onOpenChange={vm.setIsSheetOpen}>
                 <SheetContent className="w-[400px] sm:w-[540px]">
                     <SheetHeader className="mb-4">
@@ -173,10 +135,11 @@ export default function Probes() {
                         <Tabs defaultValue="management" className="h-full">
                             <TabsList className="grid w-full grid-cols-3">
                                 <TabsTrigger value="management">Management</TabsTrigger>
-                                <TabsTrigger value="config">Config</TabsTrigger>
+                                <TabsTrigger value="config">Details</TabsTrigger>
                                 <TabsTrigger value="history">History</TabsTrigger>
                             </TabsList>
 
+                            {/* TAB: MANAGEMENT */}
                             <TabsContent value="management" className="mt-4">
                                 <ScrollArea className="h-[calc(100vh-200px)]">
                                     <ProbeControls
@@ -185,12 +148,17 @@ export default function Probes() {
                                         isPinging={vm.isPinging}
                                         sendCommand={vm.sendCommand}
                                         isSending={vm.isSendingCommand}
-                                        statusOutput={vm.statusOutput}
-                                        onConfigDialogOpen={(type) => vm.setConfigDialogType(type)}
+
+                                        // Pass Cached Data from VM
+                                        statusOutput={vm.probeStatus}
+                                        configOutput={vm.probeConfig}
+
+                                        onConfigDialogOpen={vm.setConfigDialogType}
                                     />
                                 </ScrollArea>
                             </TabsContent>
 
+                            {/* TAB: CONFIG/DETAILS */}
                             <TabsContent value="config" className="mt-4 space-y-4">
                                 <div className="space-y-4 p-1">
                                     <div className="grid gap-2">
@@ -226,6 +194,7 @@ export default function Probes() {
                                 </div>
                             </TabsContent>
 
+                            {/* TAB: HISTORY */}
                             <TabsContent value="history" className="mt-4">
                                 <CommandHistoryList history={vm.commandHistory} />
                             </TabsContent>

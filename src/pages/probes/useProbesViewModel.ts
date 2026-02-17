@@ -1,8 +1,7 @@
-// useProbesViewModel.ts
-import { useState, useEffect } from "react"
+import { useState} from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
-import type { Probe, ProbeFormValues } from "./types"
+import type { Probe, ProbeFormValues, ProbeStatusCache, ProbeConfigCache } from "./types"
 
 export function useProbesViewModel() {
     const queryClient = useQueryClient()
@@ -10,8 +9,6 @@ export function useProbesViewModel() {
     const [isAddOpen, setIsAddOpen] = useState(false)
     const [isAdoptOpen, setIsAdoptOpen] = useState(false)
     const [isSheetOpen, setIsSheetOpen] = useState(false)
-    const [statusOutput, setStatusOutput] = useState<any>(null)
-    const [configOutput, setConfigOutput] = useState<any>(null)
     const [configDialogType, setConfigDialogType] = useState<'wifi' | 'mqtt' | 'rename' | 'ota' | null>(null)
 
     const { data: probes = [], isLoading } = useQuery<Probe[]>({
@@ -31,133 +28,97 @@ export function useProbesViewModel() {
             if (!res.ok) return []
             return res.json()
         },
-        enabled: !!selectedProbe,
-        refetchInterval: 2000
+        enabled: !!selectedProbe
     })
 
-    // Auto-update status and config when history changes
-    useEffect(() => {
-        if (!commandHistory || commandHistory.length === 0) return
+    // NEW: Fetch Cached Status for Selected Probe
+    const { data: probeStatus } = useQuery<ProbeStatusCache>({
+        queryKey: ["probe_status", selectedProbe?.probe_id],
+        queryFn: async () => {
+            if (!selectedProbe) return null
+            const res = await fetch(`/api/v1/probes/${selectedProbe.probe_id}/status`)
+            if (!res.ok) return null
+            return res.json()
+        },
+        enabled: !!selectedProbe,
+        refetchInterval: 5000 // Poll the cache lightly
+    })
 
-        const latestStatus = commandHistory.find((cmd: any) =>
-            cmd.command_type === 'get_status' && cmd.status === 'completed' && cmd.result
-        )
-        if (latestStatus?.result) {
-            setStatusOutput(latestStatus.result)
-        }
-
-        const latestConfig = commandHistory.find((cmd: any) =>
-            cmd.command_type === 'get_config' && cmd.status === 'completed' && cmd.result
-        )
-        if (latestConfig?.result) {
-            setConfigOutput(latestConfig.result)
-        }
-    }, [commandHistory])
+    // NEW: Fetch Cached Config for Selected Probe
+    const { data: probeConfig } = useQuery<ProbeConfigCache>({
+        queryKey: ["probe_config", selectedProbe?.probe_id],
+        queryFn: async () => {
+            if (!selectedProbe) return null
+            const res = await fetch(`/api/v1/probes/${selectedProbe.probe_id}/config`)
+            if (!res.ok) return null
+            return res.json()
+        },
+        enabled: !!selectedProbe
+    })
 
     const pingMutation = useMutation({
         mutationFn: async (probeId: string) => {
-            const res = await fetch("/api/v1/commands", {
+            const res = await fetch(`/api/v1/probes/${probeId}/command`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    probe_id: probeId,
-                    command_type: "ping",
-                    payload: {}
-                })
+                body: JSON.stringify({ command_type: "ping" })
             })
-            if (!res.ok) {
-                const errorText = await res.text()
-                throw new Error(errorText || "Probe Unreachable")
-            }
+            if (!res.ok) throw new Error("Probe Unreachable")
             return res.json()
         },
         onSuccess: () => {
-            toast.success("Ping sent - check history for response")
-            queryClient.invalidateQueries({ queryKey: ["probe_history"] })
+            toast.success("Ping Sent")
+            queryClient.invalidateQueries({ queryKey: ["probe_ping"] })
         },
-        onError: (err: Error) => {
-            toast.error(`Ping failed: ${err.message}`)
-        }
+        onError: () => toast.error("Ping Failed")
     })
 
     const commandMutation = useMutation({
         mutationFn: async ({ id, type, payload = {} }: { id: string, type: string, payload?: any }) => {
-            const res = await fetch("/api/v1/commands", {
+            const res = await fetch(`/api/v1/probes/${id}/command`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    probe_id: id,
                     command_type: type,
                     payload
                 })
             })
-            if (!res.ok) {
-                const errorText = await res.text()
-                throw new Error(errorText || 'Command failed')
-            }
+            if (!res.ok) throw new Error(await res.text())
             return res.json()
         },
         onSuccess: (data, variables) => {
-            const commandNames: Record<string, string> = {
-                'get_status': 'Fetching Status...',
-                'get_config': 'Fetching Config...',
-                'deep_scan': 'Deep Scan Started',
-                'restart': 'Reboot Initiated',
-                'factory_reset': 'Factory Reset Initiated',
-                'set_wifi': 'WiFi Updated',
-                'set_mqtt': 'MQTT Updated',
-                'rename_probe': 'Probe Renamed',
-                'ota_update': 'OTA Update Started'
+            toast.success(`Command Sent: ${variables.type}`)
+            // Invalidate relevant caches to trigger UI update
+            if (variables.type === 'get_status') {
+                queryClient.invalidateQueries({ queryKey: ["probe_status", variables.id] })
             }
-
-            toast.success(commandNames[variables.type] || `Command Sent: ${variables.type}`)
+            if (variables.type === 'get_config') {
+                queryClient.invalidateQueries({ queryKey: ["probe_config", variables.id] })
+            }
             queryClient.invalidateQueries({ queryKey: ["probe_history"] })
         },
-        onError: (err: Error) => {
-            toast.error(`Failed: ${err.message}`)
-        }
+        onError: (err: Error) => toast.error(`Failed: ${err.message}`)
     })
 
     const configCommandMutation = useMutation({
-        mutationFn: async ({
-                               probeId,
-                               type,
-                               data
-                           }: {
-            probeId: string,
-            type: 'set_wifi' | 'set_mqtt' | 'rename_probe' | 'ota_update',
-            data: any
-        }) => {
-            const res = await fetch("/api/v1/commands", {
+        mutationFn: async ({ probeId, type, data }: { probeId: string, type: string, data: any }) => {
+            const res = await fetch(`/api/v1/probes/${probeId}/command`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    probe_id: probeId,
                     command_type: type,
                     payload: data
                 })
             })
-            if (!res.ok) {
-                const errorText = await res.text()
-                throw new Error(errorText || 'Configuration command failed')
-            }
+            if (!res.ok) throw new Error(await res.text())
             return res.json()
         },
         onSuccess: (_, variables) => {
-            const messages: Record<string, string> = {
-                'set_wifi': 'WiFi configuration sent. Probe will reconnect.',
-                'set_mqtt': 'MQTT configuration sent. Probe will reconnect.',
-                'rename_probe': 'Probe rename initiated. Device will reboot.',
-                'ota_update': 'OTA update started. Monitor command history for progress.'
-            }
-
-            toast.success(messages[variables.type] || 'Configuration updated')
+            toast.success("Configuration Updated")
             setConfigDialogType(null)
-            queryClient.invalidateQueries({ queryKey: ["probe_history"] })
+            queryClient.invalidateQueries({ queryKey: ["probe_config", variables.probeId] })
         },
-        onError: (err: Error) => {
-            toast.error(`Configuration failed: ${err.message}`)
-        }
+        onError: (err: Error) => toast.error(`Config Failed: ${err.message}`)
     })
 
     const addMutation = useMutation({
@@ -178,8 +139,8 @@ export function useProbesViewModel() {
 
     const updateMutation = useMutation({
         mutationFn: async (data: Partial<Probe>) => {
-            if (!data.probe_id) return
-            const res = await fetch(`/api/v1/probes/${data.probe_id}`, {
+            if (!selectedProbe) return
+            const res = await fetch(`/api/v1/probes/${selectedProbe.probe_id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data)
@@ -218,15 +179,15 @@ export function useProbesViewModel() {
         isAdoptOpen,
         isSheetOpen,
         commandHistory,
-        statusOutput,
-        configOutput,
+        probeStatus,
+        probeConfig,
         configDialogType,
         setSelectedProbe,
         setIsAddOpen,
         setIsAdoptOpen,
         setIsSheetOpen,
-        setStatusOutput,
         setConfigDialogType,
+
         pingProbe: pingMutation.mutate,
         isPinging: pingMutation.isPending,
         sendCommand: commandMutation.mutate,
