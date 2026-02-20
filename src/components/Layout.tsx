@@ -12,10 +12,11 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { BarChart3 } from "lucide-react"
+import {useAlertsViewModel} from "../pages/alerts/useAlertsViewModel.ts";
 
 export default function Layout() {
     const [isCollapsed, setIsCollapsed] = useState(false)
-
+    const { unreadCount } = useAlertsViewModel();
     return (
         <div className="flex min-h-screen bg-background text-foreground font-sans transition-colors duration-300">
 
@@ -49,7 +50,13 @@ export default function Layout() {
                 <nav className="p-2 space-y-2 flex-1">
                     <NavItem to="/" icon={<LayoutDashboard size={20} />} label="Dashboard" collapsed={isCollapsed} />
                     <NavItem to="/probes" icon={<Radio size={20} />} label="Probes" collapsed={isCollapsed} />
-                    <NavItem to="/alerts" icon={<AlertCircle size={20} />} label="Alerts" collapsed={isCollapsed} />
+                    <NavItem
+                        to="/alerts"
+                        icon={<AlertCircle className="h-5 w-5" />}
+                        label="Alerts"
+                        collapsed={isCollapsed}
+                        badgeCount={unreadCount}
+                    />
                     <NavItem to="/analytics" icon={<BarChart3 size={20} />} label="Analytics" collapsed={isCollapsed} />
                 </nav>
 

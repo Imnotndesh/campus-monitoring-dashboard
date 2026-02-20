@@ -9,9 +9,25 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { useTheme } from "@/components/ThemeProvider"
-import { Moon, Sun, Trash2, User } from "lucide-react"
+import {Bell, Loader2, Moon, PlayCircle, Sun, Trash2, User} from "lucide-react"
+import {useMutation} from "@tanstack/react-query";
+import {toast} from "sonner";
 
 export default function Settings() {
+    const triggerTestMutation = useMutation({
+        mutationFn: async () => {
+            const res = await fetch("/api/v1/alerts/test", { method: "POST" });
+            if (!res.ok) throw new Error("Backend simulation failed");
+            return res.json();
+        },
+        onSuccess: () => toast.success("Test alert dispatched successfully!"),
+        onError: (err: Error) => toast.error(err.message)
+    });
+
+    const requestNotifications = async () => {
+        const permission = await Notification.requestPermission();
+        if (permission === 'granted') toast.success("Notifications enabled!");
+    };
     const { theme, setTheme, color, setColor } = useTheme()
 
     const clearData = () => {
@@ -83,6 +99,36 @@ export default function Settings() {
                         </Card>
                     </AccordionContent>
                 </AccordionItem>
+                <AccordionItem value="notifications" className="border-border">
+                    <AccordionTrigger className="text-lg font-semibold">Notifications</AccordionTrigger>
+                    <AccordionContent className="p-1 space-y-4">
+                        <div className="flex items-center justify-between p-4 border rounded-lg">
+                            <div className="space-y-0.5">
+                                <Label className="text-base">System Notifications</Label>
+                                <p className="text-sm text-muted-foreground">Receive OS-level alerts even when the tab is closed.</p>
+                            </div>
+                            <Button variant="outline" onClick={requestNotifications}>
+                                <Bell className="mr-2 h-4 w-4" /> Grant Permission
+                            </Button>
+                        </div>
+
+                        <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
+                            <div className="space-y-0.5">
+                                <Label className="text-base">Diagnostic Tools</Label>
+                                <p className="text-sm text-muted-foreground">Manually trigger a pipeline test for the Johnston University probe.</p>
+                            </div>
+                            <Button
+                                variant="secondary"
+                                disabled={triggerTestMutation.isPending}
+                                onClick={() => triggerTestMutation.mutate()}
+                            >
+                                {triggerTestMutation.isPending ? <Loader2 className="animate-spin" /> : <PlayCircle className="mr-2 h-4 w-4" />}
+                                Simulate Alert
+                            </Button>
+                        </div>
+                    </AccordionContent>
+                </AccordionItem>
+
 
                 {/* --- Data Section --- */}
                 <AccordionItem value="data" className="border-border">

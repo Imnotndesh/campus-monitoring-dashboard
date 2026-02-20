@@ -3,7 +3,7 @@ import Layout from "@/components/Layout"
 import Dashboard from "@/pages/Dashboard"
 import Probes from "@/pages/probes/Probes"
 import Settings from "@/pages/Settings"
-import Alerts from "@/pages/Alerts"
+import Alerts from "@/pages/alerts/Alerts"
 import Analytics from "@/pages/analytics/Analytics"
 
 export default function App() {

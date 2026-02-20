@@ -4,7 +4,7 @@ import App from './App.tsx'
 import './index.css'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from "@/components/ThemeProvider"
-import {Toaster} from "./components/ui/toaster.tsx"; // <--- Import this
+import {Toaster} from "./components/ui/toaster.tsx";
 
 const queryClient = new QueryClient()
 
