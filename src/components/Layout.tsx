@@ -12,15 +12,13 @@ import {
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { BarChart3 } from "lucide-react"
-import {useAlertsViewModel} from "../pages/alerts/useAlertsViewModel.ts";
+import {useAlertGlobal} from "./AlertProvider.tsx";
 
 export default function Layout() {
     const [isCollapsed, setIsCollapsed] = useState(false)
-    const { unreadCount } = useAlertsViewModel();
+    const { unreadCount } = useAlertGlobal();
     return (
         <div className="flex min-h-screen bg-background text-foreground font-sans transition-colors duration-300">
-
-            {/* --- Sidebar --- */}
             <aside
                 className={cn(
                     "border-r bg-muted/30 flex-shrink-0 fixed h-full flex flex-col transition-all duration-300 ease-in-out z-50",
