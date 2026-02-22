@@ -11,7 +11,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { BarChart3 } from "lucide-react"
+import { BarChart3,Map } from "lucide-react"
 import {useAlertGlobal} from "./AlertProvider.tsx";
 
 export default function Layout() {
@@ -55,6 +55,7 @@ export default function Layout() {
                         collapsed={isCollapsed}
                         badgeCount={unreadCount}
                     />
+                    <NavItem to="/heatmap" icon={<Map />} label="Topology" collapsed={isCollapsed} />
                     <NavItem to="/analytics" icon={<BarChart3 size={20} />} label="Analytics" collapsed={isCollapsed} />
                 </nav>
 
