@@ -8,10 +8,24 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { ScrollArea } from "@/components/ui/scroll-area"
-
+import TopologyGraph from "../../components/TopologyGraph"
+import { useHeatmapViewModel } from "@/pages/heatmap/useHeatmapViewModel"
 import { useProbesViewModel } from "./useProbesViewModel"
 import { ProbeCard, ProbeControls, CommandHistoryList, ConfigDialogs } from "./components"
 
+function ProbeTopologyWidget({ probeId }: { probeId: string }) {
+    const { graphData, isLoading } = useHeatmapViewModel();
+
+    return (
+        <div className="h-48 w-full border rounded-md overflow-hidden bg-muted/20 relative">
+            <TopologyGraph
+                graphData={graphData}
+                isLoading={isLoading}
+                focusedNodeId={probeId}
+            />
+        </div>
+    );
+}
 export default function Probes() {
     const vm = useProbesViewModel()
 
@@ -163,6 +177,8 @@ export default function Probes() {
                                 <div className="space-y-4 p-1">
                                     <div className="grid gap-2">
                                         <Label>Assigned Location</Label>
+                                        <ProbeTopologyWidget probeId={vm.selectedProbe.probe_id} />
+                                        <Label>Change Location</Label>
                                         <div className="relative">
                                             <MapPin className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                                             <Input
