@@ -1,10 +1,9 @@
-import { useRef, useEffect, useState } from "react";
-import ForceGraph2D from "react-force-graph-2d";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { X, Activity, AlertTriangle } from "lucide-react";
 import { useHeatmapViewModel } from "./useHeatmapViewModel";
+import TopologyGraph from "@/components/TopologyGraph";
 import { cn } from "@/lib/utils";
 
 export default function HeatmapPage() {
@@ -13,37 +12,10 @@ export default function HeatmapPage() {
         metric, setMetric, selectedFloor, setSelectedFloor
     } = useHeatmapViewModel();
 
-    const containerRef = useRef<HTMLDivElement>(null);
-    const [dimensions, setDimensions] = useState({ width: 800, height: 600 });
-
-    // Auto-resize the canvas when the window changes
-    useEffect(() => {
-        const updateDimensions = () => {
-            if (containerRef.current) {
-                setDimensions({
-                    width: containerRef.current.offsetWidth,
-                    height: containerRef.current.offsetHeight
-                });
-            }
-        };
-        window.addEventListener("resize", updateDimensions);
-        updateDimensions(); // Initial calculation
-
-        // Small delay to ensure flexbox has settled
-        setTimeout(updateDimensions, 100);
-        return () => window.removeEventListener("resize", updateDimensions);
-    }, []);
-
-    if (isLoading && graphData.nodes.length === 0) return (
-        <div className="p-8 flex items-center justify-center h-full">
-            <Activity className="animate-spin h-8 w-8 text-muted-foreground" />
-        </div>
-    );
-
     return (
-        <div className="relative w-full h-[calc(100vh-80px)] bg-background/50 border rounded-xl flex flex-col shadow-sm overflow-hidden" ref={containerRef}>
+        <div className="relative w-full h-[calc(100vh-80px)] bg-background/50 border rounded-xl flex flex-col shadow-sm overflow-hidden">
 
-            {/* --- TOP CONTROLS --- */}
+            {/* TOP CONTROLS */}
             <div className="absolute top-4 left-4 z-20 flex items-center gap-2 bg-background/95 backdrop-blur-md p-2 rounded-lg border shadow-sm">
                 <Select value={metric} onValueChange={setMetric}>
                     <SelectTrigger className="w-[180px]">
@@ -57,48 +29,14 @@ export default function HeatmapPage() {
                 </Select>
             </div>
 
-            {/* --- OBSIDIAN STYLE GRAPH --- */}
-            <div className="flex-1 cursor-grab active:cursor-grabbing">
-                <ForceGraph2D
-                    width={dimensions.width}
-                    height={dimensions.height}
+            {/* THE EXTRACTED GRAPH COMPONENT */}
+            <div className="flex-1">
+                <TopologyGraph
                     graphData={graphData}
-                    nodeRelSize={6}
-                    linkColor={() => "rgba(150, 150, 150, 0.4)"}
-                    linkWidth={1.5}
-                    // Custom Node Rendering to draw the text right next to the node dot
-                    nodeCanvasObject={(node: any, ctx, globalScale) => {
-                        const label = node.name;
-                        const fontSize = 12 / globalScale;
-                        ctx.font = `${fontSize}px Sans-Serif`;
-
-                        // Draw Node Circle
-                        ctx.beginPath();
-                        ctx.arc(node.x, node.y, node.val, 0, 2 * Math.PI, false);
-                        ctx.fillStyle = node.color;
-                        ctx.fill();
-
-                        // Draw Alert Ring if active alerts exist
-                        if (node.activeAlerts > 0) {
-                            ctx.beginPath();
-                            ctx.arc(node.x, node.y, node.val + 2, 0, 2 * Math.PI, false);
-                            ctx.strokeStyle = "rgba(239, 68, 68, 0.8)"; // Red ring
-                            ctx.lineWidth = 2 / globalScale;
-                            ctx.stroke();
-                        }
-
-                        // Draw Text Label
-                        ctx.fillStyle = "rgba(100, 100, 100, 0.9)"; // Adjust for dark/light mode as needed
-                        ctx.textAlign = "left";
-                        ctx.textBaseline = "middle";
-
-                        // Only label Server and Buildings permanently, or hover effects
-                        if (node.group === 'SERVER' || node.group === 'BUILDING' || globalScale > 2) {
-                            ctx.fillText(label, node.x + node.val + 2, node.y);
-                        }
-                    }}
+                    isLoading={isLoading}
                     onNodeClick={(node: any) => {
-                        if (node.group === 'FLOOR') {
+                        // Open the side panel if a Floor or Probe is clicked
+                        if (node.group === 'FLOOR' || node.group === 'PROBE') {
                             setSelectedFloor({
                                 buildingId: node.buildingId,
                                 buildingName: node.buildingName,
@@ -106,12 +44,10 @@ export default function HeatmapPage() {
                             });
                         }
                     }}
-                    // Force physics engine tuning
-                    d3VelocityDecay={0.3}
                 />
             </div>
 
-            {/* --- SIDE PANEL (DRILL DOWN) --- */}
+            {/* SIDE PANEL (Drill Down) */}
             {selectedFloor && (
                 <Card className="absolute top-4 right-4 bottom-4 w-80 z-30 flex flex-col shadow-2xl animate-in slide-in-from-right duration-300 border-l-4 border-l-primary bg-background/95 backdrop-blur">
                     <div className="p-4 border-b flex justify-between items-center bg-muted/30">
@@ -153,7 +89,7 @@ export default function HeatmapPage() {
                                 )}
                             </div>
                         ))}
-                        {floorDetails?.probes.length === 0 && (
+                        {floorDetails?.probes && floorDetails.probes.length === 0 && (
                             <div className="text-center mt-10 p-4 bg-muted/20 border border-dashed rounded-lg">
                                 <p className="text-sm font-medium text-foreground">No Probes Found</p>
                                 <p className="text-xs text-muted-foreground mt-1">No telemetry reporting for this level.</p>

@@ -8,6 +8,7 @@ export interface FloorNode {
     floor_id: string;
     z_index: number;
     probe_count: number;
+    probes: string[];
 }
 
 export interface BuildingNode {
