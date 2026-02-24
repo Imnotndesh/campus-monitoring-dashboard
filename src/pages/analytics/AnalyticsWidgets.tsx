@@ -32,7 +32,6 @@ import type { Command, TimeSeriesPoint, AnalyticsTimeRange } from "./types"
 import {Button} from "../../components/ui/button.tsx";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
-import {DialogHeader} from "../../components/ui/dialog.tsx";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
 import { cn } from "@/lib/utils"

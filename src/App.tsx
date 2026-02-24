@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
 import Layout from "@/components/Layout"
-import Dashboard from "@/pages/Dashboard"
+import Dashboard from "@/pages/dashboard/Dashboard"
 import Probes from "@/pages/probes/Probes"
 import Settings from "@/pages/Settings"
 import Alerts from "@/pages/alerts/Alerts"
