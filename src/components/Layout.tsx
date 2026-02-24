@@ -4,6 +4,7 @@ import {
     LayoutDashboard,
     Radio,
     Settings,
+    Building2,
     AlertCircle,
     Network,
     Menu,
@@ -48,6 +49,7 @@ export default function Layout() {
                 <nav className="p-2 space-y-2 flex-1">
                     <NavItem to="/" icon={<LayoutDashboard size={20} />} label="Dashboard" collapsed={isCollapsed} />
                     <NavItem to="/probes" icon={<Radio size={20} />} label="Probes" collapsed={isCollapsed} />
+                    <NavItem to="/fleet" icon={<Building2 size={20} />} label="Fleet" collapsed={isCollapsed} />
                     <NavItem
                         to="/alerts"
                         icon={<AlertCircle className="h-5 w-5" />}

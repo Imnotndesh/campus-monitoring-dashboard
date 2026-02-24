@@ -6,6 +6,7 @@ import Settings from "@/pages/Settings"
 import Alerts from "@/pages/alerts/Alerts"
 import Analytics from "@/pages/analytics/Analytics"
 import HeatmapPage from "./pages/heatmap/Heatmap.tsx";
+import Fleet from "./pages/fleet/Fleet.tsx"
 
 export default function App() {
     return (
@@ -23,6 +24,7 @@ export default function App() {
                     />
                     <Route path="/analytics" element={<Analytics />} />
                     <Route path="/heatmap" element={<HeatmapPage/>} />
+                    <Route path="/fleet" element={<Fleet/>}/>
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Route>
             </Routes>
