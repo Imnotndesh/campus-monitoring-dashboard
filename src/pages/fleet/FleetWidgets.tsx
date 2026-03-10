@@ -2,7 +2,7 @@ import { useQuery } from "@tanstack/react-query"
 import {
     Activity, CheckCircle2, Loader2, Server,
     Users, XCircle, Zap, WifiOff,
-    ServerOff,Plus, RotateCcw,
+    ServerOff,Plus, Play,
 } from "lucide-react"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -11,10 +11,12 @@ import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import type {FleetStatusResponse, FleetProbe, FleetCommand, FleetGroup, FleetCommandRequest} from "./types"
 import {useState} from "react";
 
-// ─── Fleet Overview KPI Widget ───────────────────────────────────────────────
+//  Fleet Overview KPI Widget
 
 export function FleetOverviewWidget() {
     const { data: status, isLoading } = useQuery<FleetStatusResponse>({
@@ -73,7 +75,7 @@ export function FleetOverviewWidget() {
     )
 }
 
-// ─── Fleet Probe List Widget ──────────────────────────────────────────────────
+//  Fleet Probe List Widget
 
 export function FleetProbeListWidget({ maxItems = 8 }: { maxItems?: number }) {
     const { data: probes = [], isLoading } = useQuery<FleetProbe[]>({
@@ -147,7 +149,7 @@ export function FleetProbeListWidget({ maxItems = 8 }: { maxItems?: number }) {
     )
 }
 
-// ─── Active Rollouts Widget ───────────────────────────────────────────────────
+//  Active Rollouts Widget
 
 export function ActiveRolloutsWidget() {
     const { data: commands = [], isLoading } = useQuery<FleetCommand[]>({
@@ -211,7 +213,7 @@ export function ActiveRolloutsWidget() {
     )
 }
 
-// ─── Fleet Groups Summary Widget ──────────────────────────────────────────────
+//  Fleet Groups Summary Widget
 
 export function FleetGroupsWidget() {
     const { data: probes = [] } = useQuery<FleetProbe[]>({
@@ -275,7 +277,7 @@ export function FleetGroupsWidget() {
     )
 }
 
-// ─── Offline Probes Alert Widget ──────────────────────────────────────────────
+//  Offline Probes Alert Widget
 
 export function OfflineProbesWidget() {
     const { data: probes = [], isLoading } = useQuery<FleetProbe[]>({
@@ -360,7 +362,7 @@ export function UnenrolledCountWidget() {
     )
 }
 
-// ─── Unenrolled Probes List Widget ───────────────────────────────────────────
+//  Unenrolled Probes List Widget
 export function UnenrolledListWidget({ onEnrollClick }: { onEnrollClick: (probe: any) => void }) {
     const { data: unenrolled = [], isLoading } = useQuery({
         queryKey: ["fleet-unenrolled-probes"],
@@ -409,7 +411,7 @@ export function UnenrolledListWidget({ onEnrollClick }: { onEnrollClick: (probe:
     )
 }
 
-// ─── Fleet Quick Actions Widget ──────────────────────────────────────────────
+// Group Quick actions
 export function FleetQuickActionsWidget({
                                             groups,
                                             onSend,
@@ -420,16 +422,34 @@ export function FleetQuickActionsWidget({
     isSending: boolean
 }) {
     const [selectedGroup, setSelectedGroup] = useState<string>("")
+    const [cmdType, setCmdType] = useState<string>("fleet_status")
+    const [payloadVal, setPayloadVal] = useState<string>("")
 
-    const handleAction = (cmdType: string) => {
+    const handleExecute = () => {
         if (!selectedGroup) return
+        let payload: Record<string, any> = {}
+
+        // Construct the correct payload structure based on the command
+        if (cmdType === "fleet_ota") payload = { url: payloadVal }
+        else if (cmdType === "fleet_deep_scan") payload = { target_ip: payloadVal || "8.8.8.8" }
+        else if (cmdType === "fleet_location") payload = { location: payloadVal }
+        else if (cmdType === "fleet_maintenance") payload = { window: payloadVal }
+        else if (cmdType === "fleet_config") {
+            try {
+                payload = JSON.parse(payloadVal)
+            } catch (e) {
+                alert("Invalid JSON format");
+                return;
+            }
+        }
+
         onSend({
             command_type: cmdType,
             target_all: false,
             groups: [selectedGroup],
             probe_ids: [],
             strategy: "immediate",
-            payload: {}
+            payload: payload
         })
     }
 
@@ -451,35 +471,49 @@ export function FleetQuickActionsWidget({
                     </Select>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start"
-                        disabled={!selectedGroup || isSending}
-                        onClick={() => handleAction("fleet_reboot")}
-                    >
-                        <RotateCcw className="w-4 h-4 mr-2 text-rose-500" /> Reboot
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start"
-                        disabled={!selectedGroup || isSending}
-                        onClick={() => handleAction("fleet_status")}
-                    >
-                        <Activity className="w-4 h-4 mr-2 text-primary" /> Ping Status
-                    </Button>
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full justify-start col-span-2"
-                        disabled={!selectedGroup || isSending}
-                        onClick={() => handleAction("fleet_deep_scan")}
-                    >
-                        <Zap className="w-4 h-4 mr-2 text-amber-500" /> Force Deep Scan
-                    </Button>
+                <div className="space-y-2">
+                    <Label className="text-xs">Fleet Action</Label>
+                    <Select value={cmdType} onValueChange={(val) => { setCmdType(val); setPayloadVal(""); }}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="fleet_status">Status Check</SelectItem>
+                            <SelectItem value="fleet_reboot">Reboot Group</SelectItem>
+                            <SelectItem value="fleet_deep_scan">Deep Scan</SelectItem>
+                            <SelectItem value="fleet_ota">OTA Update</SelectItem>
+                            <SelectItem value="fleet_config">Update Config</SelectItem>
+                            <SelectItem value="fleet_location">Set Location</SelectItem>
+                            <SelectItem value="fleet_maintenance">Set Maint. Window</SelectItem>
+                            <SelectItem value="fleet_factory_reset">Factory Reset</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
+
+                {/* Dynamically render the input field only if the command requires a payload */}
+                {["fleet_ota", "fleet_deep_scan", "fleet_location", "fleet_maintenance", "fleet_config"].includes(cmdType) && (
+                    <div className="space-y-2 bg-muted/30 p-2 rounded border">
+                        <Label className="text-xs text-primary">
+                            {cmdType === "fleet_ota" ? "Firmware URL" :
+                                cmdType === "fleet_deep_scan" ? "Target IP (Default: 8.8.8.8)" :
+                                    cmdType === "fleet_location" ? "Location Label" :
+                                        cmdType === "fleet_maintenance" ? "Window (e.g. 02:00-04:00)" : "JSON Config"}
+                        </Label>
+                        {cmdType === "fleet_config" ? (
+                            <Textarea className="text-xs font-mono h-20" placeholder='{"setting": "value"}' value={payloadVal} onChange={e => setPayloadVal(e.target.value)} />
+                        ) : (
+                            <Input className="h-8 text-xs" value={payloadVal} onChange={e => setPayloadVal(e.target.value)} />
+                        )}
+                    </div>
+                )}
+
+                <Button
+                    className="w-full gap-2"
+                    size="sm"
+                    disabled={!selectedGroup || isSending}
+                    onClick={handleExecute}
+                >
+                    {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                    Dispatch to Group
+                </Button>
             </CardContent>
         </Card>
     )

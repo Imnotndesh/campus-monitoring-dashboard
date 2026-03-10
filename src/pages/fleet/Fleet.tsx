@@ -34,7 +34,7 @@ import {
 import { Separator } from "@/components/ui/separator"
 
 import { useFleetViewModel } from "./useFleetViewModel"
-import type {BaseProbe, FleetCommandRequest, FleetProbe} from "./types"
+import type {BaseProbe, FleetCommandRequest, FleetGroup, FleetProbe} from "./types"
 import {FleetQuickActionsWidget, UnenrolledCountWidget, UnenrolledListWidget} from "./FleetWidgets.tsx";
 import {useQuery} from "@tanstack/react-query";
 
@@ -114,172 +114,148 @@ function RolloutProgressBar({ status }: { status: NonNullable<ReturnType<typeof 
     )
 }
 
-// ─── Send Command Dialog ──────────────────────────────────────────────────────
 
-function SendCommandDialog({
-                               open, onOpenChange, groups, probes, onSend, isSending
-                           }: {
-    open: boolean
-    onOpenChange: (v: boolean) => void
-    groups: ReturnType<typeof useFleetViewModel>["groups"] | null | undefined
-    probes: FleetProbe[]
-    onSend: (req: FleetCommandRequest) => void
+export function SendCommandDialog({
+                                      open,
+                                      onOpenChange,
+                                      groups,
+                                      probes,
+                                      onSend,
+                                      isSending
+                                  }: {
+    open: boolean,
+    onOpenChange: (open: boolean) => void,
+    groups: FleetGroup[],
+    probes: FleetProbe[],
+    onSend: (req: FleetCommandRequest) => void,
     isSending: boolean
 }) {
-    const [cmdType, setCmdType] = useState("fleet_status")
-    const [targetType, setTargetType] = useState<"all" | "groups" | "probes">("all")
-    const [selectedGroups, setSelectedGroups] = useState<string[]>([])
-    const [selectedProbes, setSelectedProbes] = useState<string[]>([])
-    const [strategy, setStrategy] = useState("immediate")
-    const [payloadJson, setPayloadJson] = useState("{}")
-    const [payloadError, setPayloadError] = useState("")
+    const [cmdType, setCmdType] = useState<string>("fleet_status")
+    const [targetMode, setTargetMode] = useState<string>("all")
+    const [targetGroup, setTargetGroup] = useState<string>("")
+    const [targetProbe, setTargetProbe] = useState<string>("")
 
-    const toggleGroup = (g: string) =>
-        setSelectedGroups(prev => prev.includes(g) ? prev.filter(x => x !== g) : [...prev, g])
-
-    const toggleProbe = (p: string) =>
-        setSelectedProbes(prev => prev.includes(p) ? prev.filter(x => x !== p) : [...prev, p])
+    // Dynamic Payload States
+    const [otaUrl, setOtaUrl] = useState("")
+    const [scanIp, setScanIp] = useState("8.8.8.8")
+    const [locationStr, setLocationStr] = useState("")
+    const [maintWindow, setMaintWindow] = useState("02:00-04:00")
+    const [configJson, setConfigJson] = useState("{}")
 
     const handleSend = () => {
         let payload: Record<string, any> = {}
-        try {
-            payload = JSON.parse(payloadJson)
-            setPayloadError("")
-        } catch {
-            setPayloadError("Invalid JSON payload")
-            return
+
+        // Build the payload based on command type
+        if (cmdType === "fleet_ota") payload = { url: otaUrl }
+        if (cmdType === "fleet_deep_scan") payload = { target_ip: scanIp }
+        if (cmdType === "fleet_location") payload = { location: locationStr }
+        if (cmdType === "fleet_maintenance") payload = { window: maintWindow }
+        if (cmdType === "fleet_config") {
+            try { payload = JSON.parse(configJson) }
+            catch (e) { alert("Invalid JSON format"); return; }
         }
 
-        const req: FleetCommandRequest = {
+        onSend({
             command_type: cmdType,
-            payload,
-            strategy: strategy as any,
-            target_all: targetType === "all",
-            groups: targetType === "groups" ? selectedGroups : [],
-            probe_ids: targetType === "probes" ? selectedProbes : [],
-        }
-        onSend(req)
+            target_all: targetMode === "all",
+            groups: targetMode === "group" && targetGroup ? [targetGroup] : [],
+            probe_ids: targetMode === "specific" && targetProbe ? [targetProbe] : [],
+            strategy: targetMode === "canary" ? "staggered" : "immediate",
+            payload: payload
+        })
         onOpenChange(false)
     }
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-xl">
+            <DialogContent className="sm:max-w-[425px]">
                 <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <Terminal className="h-4 w-4" /> Send Fleet Command
-                    </DialogTitle>
+                    <DialogTitle>Dispatch Fleet Command</DialogTitle>
                 </DialogHeader>
-
-                <div className="space-y-4 py-2">
-                    {/* Command Type */}
-                    <div className="space-y-1.5">
-                        <Label>Command Type</Label>
+                <div className="grid gap-4 py-4">
+                    <div className="space-y-2">
+                        <Label>Command Action</Label>
                         <Select value={cmdType} onValueChange={setCmdType}>
                             <SelectTrigger><SelectValue /></SelectTrigger>
                             <SelectContent>
-                                {[
-                                    { v: "fleet_status",       l: "Status Report" },
-                                    { v: "fleet_deep_scan",    l: "Deep Scan" },
-                                    { v: "fleet_reboot",       l: "Reboot" },
-                                    { v: "fleet_ota",          l: "OTA Update" },
-                                    { v: "fleet_config",       l: "Push Config" },
-                                    { v: "fleet_factory_reset",l: "Factory Reset" },
-                                    { v: "fleet_maintenance",  l: "Set Maintenance Window" },
-                                    { v: "fleet_groups",       l: "Update Groups" },
-                                    { v: "fleet_tags",         l: "Set Tags" },
-                                ].map(({ v, l }) => (
-                                    <SelectItem key={v} value={v}>{l}</SelectItem>
-                                ))}
+                                <SelectItem value="fleet_status">Status Check</SelectItem>
+                                <SelectItem value="fleet_reboot">Reboot Probe</SelectItem>
+                                <SelectItem value="fleet_deep_scan">Deep Scan</SelectItem>
+                                <SelectItem value="fleet_ota">OTA Update</SelectItem>
+                                <SelectItem value="fleet_config">Update Config</SelectItem>
+                                <SelectItem value="fleet_location">Set Location</SelectItem>
+                                <SelectItem value="fleet_maintenance">Set Maint. Window</SelectItem>
+                                <SelectItem value="fleet_factory_reset">Factory Reset</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
 
-                    {/* Target */}
+                    {/* Dynamic Payload Inputs */}
+                    {cmdType === "fleet_ota" && (
+                        <div className="space-y-2">
+                            <Label>Firmware URL</Label>
+                            <Input placeholder="http://server/firmware.bin" value={otaUrl} onChange={e => setOtaUrl(e.target.value)} />
+                        </div>
+                    )}
+                    {cmdType === "fleet_deep_scan" && (
+                        <div className="space-y-2">
+                            <Label>Target IP</Label>
+                            <Input placeholder="8.8.8.8" value={scanIp} onChange={e => setScanIp(e.target.value)} />
+                        </div>
+                    )}
+                    {cmdType === "fleet_location" && (
+                        <div className="space-y-2">
+                            <Label>Location Label</Label>
+                            <Input placeholder="Server Room A" value={locationStr} onChange={e => setLocationStr(e.target.value)} />
+                        </div>
+                    )}
+                    {cmdType === "fleet_maintenance" && (
+                        <div className="space-y-2">
+                            <Label>Maintenance Window</Label>
+                            <Input placeholder="02:00-04:00" value={maintWindow} onChange={e => setMaintWindow(e.target.value)} />
+                        </div>
+                    )}
+                    {cmdType === "fleet_config" && (
+                        <div className="space-y-2">
+                            <Label>JSON Configuration</Label>
+                            <Textarea className="font-mono text-xs" value={configJson} onChange={e => setConfigJson(e.target.value)} rows={4} />
+                        </div>
+                    )}
+
                     <div className="space-y-2">
-                        <Label>Target</Label>
-                        <div className="flex gap-2">
-                            {(["all", "groups", "probes"] as const).map(t => (
-                                <Button
-                                    key={t}
-                                    size="sm"
-                                    variant={targetType === t ? "default" : "outline"}
-                                    onClick={() => setTargetType(t)}
-                                    className="capitalize"
-                                >
-                                    {t === "all" ? "All Probes" : t}
-                                </Button>
-                            ))}
-                        </div>
-
-                        {targetType === "groups" && (
-                            <div className="flex flex-wrap gap-2 p-3 border rounded-lg bg-muted/20">
-                                {(groups ?? []).map(g => (
-                                    <Badge
-                                        key={g.id}
-                                        variant={selectedGroups.includes(g.name) ? "default" : "outline"}
-                                        className="cursor-pointer"
-                                        onClick={() => toggleGroup(g.name)}
-                                    >
-                                        {g.name}
-                                    </Badge>
-                                ))}
-                            </div>
-                        )}
-
-                        {targetType === "probes" && (
-                            <ScrollArea className="h-[120px] border rounded-lg p-2">
-                                {probes.map(p => (
-                                    <div
-                                        key={p.probe_id}
-                                        className={`flex items-center gap-2 p-2 rounded cursor-pointer text-sm ${
-                                            selectedProbes.includes(p.probe_id) ? "bg-primary/10" : "hover:bg-muted"
-                                        }`}
-                                        onClick={() => toggleProbe(p.probe_id)}
-                                    >
-                                        <StatusDot online={!!p.mqtt_connected} />
-                                        <span className="font-mono text-xs">{p.probe_id}</span>
-                                        <span className="text-muted-foreground text-xs">{p.location}</span>
-                                    </div>
-                                ))}
-                            </ScrollArea>
-                        )}
+                        <Label>Target Selection</Label>
+                        <Select value={targetMode} onValueChange={setTargetMode}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Entire Fleet (Rolling)</SelectItem>
+                                <SelectItem value="group">Specific Group</SelectItem>
+                                <SelectItem value="specific">Specific Probe</SelectItem>
+                            </SelectContent>
+                        </Select>
                     </div>
 
-                    {/* Strategy */}
-                    <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1.5">
-                            <Label>Rollout Strategy</Label>
-                            <Select value={strategy} onValueChange={setStrategy}>
-                                <SelectTrigger><SelectValue /></SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="immediate">Immediate</SelectItem>
-                                    <SelectItem value="canary">Canary</SelectItem>
-                                    <SelectItem value="staggered">Staggered</SelectItem>
-                                    <SelectItem value="maintenance">Maintenance Window</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
+                    {targetMode === "group" && (
+                        <Select value={targetGroup} onValueChange={setTargetGroup}>
+                            <SelectTrigger><SelectValue placeholder="Select Group" /></SelectTrigger>
+                            <SelectContent>
+                                {groups.map(g => <SelectItem key={g.id} value={g.name}>{g.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    )}
 
-                    {/* Payload */}
-                    <div className="space-y-1.5">
-                        <Label>Payload (JSON)</Label>
-                        <Textarea
-                            value={payloadJson}
-                            onChange={e => { setPayloadJson(e.target.value); setPayloadError("") }}
-                            className="font-mono text-xs h-[80px] resize-none"
-                            placeholder="{}"
-                        />
-                        {payloadError && <p className="text-xs text-destructive">{payloadError}</p>}
-                    </div>
+                    {targetMode === "specific" && (
+                        <Select value={targetProbe} onValueChange={setTargetProbe}>
+                            <SelectTrigger><SelectValue placeholder="Select Probe" /></SelectTrigger>
+                            <SelectContent>
+                                {probes.map(p => <SelectItem key={p.probe_id} value={p.probe_id}>{p.probe_id}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                    )}
                 </div>
-
                 <DialogFooter>
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={handleSend} disabled={isSending} className="gap-2">
-                        {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                        Dispatch Command
+                    <Button onClick={handleSend} disabled={isSending}>
+                        {isSending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />} Send Command
                     </Button>
                 </DialogFooter>
             </DialogContent>
@@ -997,7 +973,7 @@ export default function Fleet() {
 
                     <div className="grid gap-4 lg:grid-cols-7">
                         {/* Commands list */}
-                        <Card className={vm.selectedCommandId ? "lg:col-span-4" : "lg:col-span-7"}>
+                        <Card className={vm.selectedCommandId ? "lg:col-span-3" : "lg:col-span-7"}>
                             <CardContent className="p-0">
                                 {vm.isCommandsLoading ? (
                                     <div className="flex items-center justify-center h-[300px]">
@@ -1009,7 +985,7 @@ export default function Fleet() {
                                         <p className="text-sm">No fleet commands</p>
                                     </div>
                                 ) : (
-                                    <ScrollArea className="h-[480px]">
+                                    <ScrollArea className="h-[600px]">
                                         <div className="divide-y">
                                             {commands.map(cmd => (
                                                 <div
@@ -1024,37 +1000,24 @@ export default function Fleet() {
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex items-center gap-2">
                                                             <span className="font-mono text-sm font-medium">{cmd.command_type}</span>
-                                                            <CommandStatusBadge status={cmd.status} />
+                                                            <Badge variant={cmd.status === "completed" ? "default" : cmd.status === "failed" ? "destructive" : "secondary"} className="text-[10px] h-4">
+                                                                {cmd.status}
+                                                            </Badge>
                                                         </div>
                                                         <div className="text-xs text-muted-foreground mt-0.5">
                                                             {new Date(cmd.issued_at).toLocaleString()} · {cmd.total_targets} targets
-                                                            {cmd.issued_by && ` · by ${cmd.issued_by}`}
                                                         </div>
                                                     </div>
 
-                                                    {/* Mini progress */}
                                                     {cmd.total_targets > 0 && (
-                                                        <div className="w-24 hidden md:block">
-                                                            <Progress
-                                                                value={(cmd.completed_count / cmd.total_targets) * 100}
-                                                                className="h-1.5"
-                                                            />
+                                                        <div className="w-20 hidden lg:block">
+                                                            <Progress value={(cmd.completed_count / cmd.total_targets) * 100} className="h-1.5" />
                                                             <div className="text-[10px] text-muted-foreground text-right mt-0.5">
                                                                 {cmd.completed_count}/{cmd.total_targets}
                                                             </div>
                                                         </div>
                                                     )}
 
-                                                    {(cmd.status === "pending" || cmd.status === "in_progress") && (
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive"
-                                                            onClick={e => { e.stopPropagation(); vm.cancelCommand(cmd.id) }}
-                                                        >
-                                                            <XCircle className="h-4 w-4" />
-                                                        </Button>
-                                                    )}
                                                     <ChevronRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                                                 </div>
                                             ))}
@@ -1064,46 +1027,81 @@ export default function Fleet() {
                             </CardContent>
                         </Card>
 
-                        {/* Rollout Status Panel */}
+                        {/* Rollout Status & Responses Panel */}
                         {vm.selectedCommandId && (
-                            <Card className="lg:col-span-3 flex flex-col overflow-hidden border-t-4 border-t-primary/30">
-                                <CardHeader className="pb-2">
+                            <Card className="lg:col-span-4 flex flex-col overflow-hidden border-t-4 border-t-primary/30 h-[600px]">
+                                <CardHeader className="pb-2 bg-muted/20 border-b">
                                     <CardTitle className="text-sm flex items-center justify-between">
-                                        Rollout Status
-                                        <Button
-                                            variant="ghost" size="icon" className="h-6 w-6"
-                                            onClick={() => vm.setSelectedCommandId(null)}
-                                        >
-                                            <XCircle className="h-3.5 w-3.5" />
+                                        Execution Details
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => vm.setSelectedCommandId(null)}>
+                                            <XCircle className="h-4 w-4" />
                                         </Button>
                                     </CardTitle>
                                 </CardHeader>
-                                <CardContent className="flex-1">
+                                <CardContent className="flex-1 p-0 flex flex-col">
                                     {vm.commandStatus ? (
-                                        <div className="space-y-5">
-                                            <RolloutProgressBar status={vm.commandStatus} />
-                                            <Separator />
-                                            <div className="space-y-2 text-xs">
-                                                <div className="flex justify-between">
-                                                    <span className="text-muted-foreground">Started</span>
-                                                    <span>{new Date(vm.commandStatus.timeline.started_at).toLocaleTimeString()}</span>
-                                                </div>
-                                                {vm.commandStatus.timeline.completed_at && (
+                                        <>
+                                            {/* Overall Summary */}
+                                            <div className="p-4 border-b space-y-4">
+                                                <div className="space-y-2 text-xs">
                                                     <div className="flex justify-between">
-                                                        <span className="text-muted-foreground">Completed</span>
-                                                        <span>{new Date(vm.commandStatus.timeline.completed_at).toLocaleTimeString()}</span>
+                                                        <span className="text-muted-foreground">Command ID</span>
+                                                        <span className="font-mono bg-muted px-1.5 py-0.5 rounded">{vm.selectedCommandId}</span>
                                                     </div>
-                                                )}
-                                                <div className="flex justify-between">
-                                                    <span className="text-muted-foreground">Command ID</span>
-                                                    <span className="font-mono text-[10px] bg-muted px-1.5 py-0.5 rounded">
-                                                        {vm.selectedCommandId}
-                                                    </span>
+                                                    <div className="flex justify-between">
+                                                        <span className="text-muted-foreground">Issued At</span>
+                                                        <span>{new Date(vm.commandStatus.timeline.started_at).toLocaleString()}</span>
+                                                    </div>
+                                                    {vm.commandStatus.payload && Object.keys(vm.commandStatus.payload).length > 0 && (
+                                                        <div className="mt-2 bg-muted/50 p-2 rounded border font-mono text-[10px] break-all">
+                                                            <span className="text-muted-foreground block mb-1">Payload Sent:</span>
+                                                            {JSON.stringify(vm.commandStatus.payload, null, 2)}
+                                                        </div>
+                                                    )}
                                                 </div>
                                             </div>
-                                        </div>
+
+                                            {/* Detailed Probe Responses */}
+                                            <div className="flex-1 overflow-hidden flex flex-col">
+                                                <div className="px-4 py-2 bg-muted/30 text-xs font-semibold border-b">
+                                                    Target Responses
+                                                </div>
+                                                <ScrollArea className="flex-1">
+                                                    {vm.commandStatus.targets && vm.commandStatus.targets.length > 0 ? (
+                                                        <div className="divide-y">
+                                                            {vm.commandStatus.targets.map((target: any) => (
+                                                                <div key={target.probe_id} className="p-4 space-y-2">
+                                                                    <div className="flex justify-between items-center">
+                                                                        <span className="font-mono font-medium text-sm">{target.probe_id}</span>
+                                                                        <Badge variant={target.status === "completed" ? "default" : target.status === "failed" ? "destructive" : "secondary"}>
+                                                                            {target.status}
+                                                                        </Badge>
+                                                                    </div>
+                                                                    {target.response_payload && (
+                                                                        <div className="bg-black/90 text-green-400 p-3 rounded-md font-mono text-[10px] whitespace-pre-wrap overflow-x-auto">
+                                                                            {typeof target.response_payload === 'object'
+                                                                                ? JSON.stringify(target.response_payload, null, 2)
+                                                                                : target.response_payload}
+                                                                        </div>
+                                                                    )}
+                                                                    {target.error && (
+                                                                        <div className="bg-rose-500/10 text-rose-500 p-2 rounded border border-rose-500/20 text-xs">
+                                                                            {target.error}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ) : (
+                                                        <div className="p-8 text-center text-muted-foreground text-sm">
+                                                            Waiting for target assignments...
+                                                        </div>
+                                                    )}
+                                                </ScrollArea>
+                                            </div>
+                                        </>
                                     ) : (
-                                        <div className="flex items-center justify-center h-[200px]">
+                                        <div className="flex items-center justify-center h-full">
                                             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                                         </div>
                                     )}
