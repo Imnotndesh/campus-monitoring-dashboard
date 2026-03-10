@@ -9,7 +9,7 @@ import type {
     FleetRolloutStatus,
     FleetStatusResponse,
     FleetEnrollRequest,
-    FleetCommandRequest,
+    FleetCommandRequest, BaseProbe,
 } from "./types"
 
 export function useFleetViewModel() {
@@ -30,8 +30,15 @@ export function useFleetViewModel() {
         },
         refetchInterval: 15000,
     })
-
-    // ── Fleet Probes ───────────────────────────────────────────────────────────
+    const { data: unenrolledProbes = [], isLoading: isUnenrolledLoading } = useQuery<BaseProbe[]>({
+        queryKey: ["fleet-unenrolled-probes"],
+        queryFn: async () => {
+            const res = await fetch("/api/v1/fleet/unenrolled-probes")
+            if (!res.ok) throw new Error("Failed to fetch unenrolled probes")
+            return res.json()
+        },
+        refetchInterval: 15000,
+    })
     const { data: probes = [], isLoading: isProbesLoading } = useQuery<FleetProbe[]>({
         queryKey: ["fleet-probes", groupFilter],
         queryFn: async () => {
@@ -43,6 +50,7 @@ export function useFleetViewModel() {
         },
         refetchInterval: 10000,
     })
+
 
     // ── Selected Probe Detail ──────────────────────────────────────────────────
     const { data: selectedProbe } = useQuery<FleetProbe>({
@@ -235,6 +243,28 @@ export function useFleetViewModel() {
         },
         onError: (e: Error) => toast.error(e.message),
     })
+    const getSmartSuggestions = useCallback((buildingOrLocation: string) => {
+        if (!buildingOrLocation) return { groups: [], tags: {} }
+        const similarProbes = (probes || []).filter(p =>
+            p.location === buildingOrLocation || (p as any).building === buildingOrLocation
+        )
+        const suggestedGroups = new Set<string>()
+        const suggestedTags: Record<string, string> = {}
+
+        similarProbes.forEach(p => {
+            p.groups?.forEach(g => suggestedGroups.add(g))
+            if (p.tags) {
+                Object.entries(p.tags).forEach(([k, v]) => {
+                    suggestedTags[k] = v as string
+                })
+            }
+        })
+
+        return {
+            groups: Array.from(suggestedGroups),
+            tags: suggestedTags
+        }
+    }, [probes])
 
     const sendCommand = useCallback(
         (req: FleetCommandRequest) => sendCommandMutation.mutate(req),
@@ -256,6 +286,10 @@ export function useFleetViewModel() {
         templates, isTemplatesLoading,
         commands, isCommandsLoading,
         commandStatus,
+        unenrolledProbes,
+        isUnenrolledLoading,
+        enrollMutation,
+        getSmartSuggestions,
 
         // Mutations
         enrollProbe: (probeId: string, req: FleetEnrollRequest) => enrollMutation.mutate({ probeId, req }),

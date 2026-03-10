@@ -1,13 +1,18 @@
 import { useQuery } from "@tanstack/react-query"
 import {
     Activity, CheckCircle2, Loader2, Server,
-    Users, XCircle, Zap, Layers, WifiOff
+    Users, XCircle, Zap, WifiOff,
+    ServerOff,Plus, RotateCcw,
 } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import type { FleetStatusResponse, FleetProbe, FleetCommand } from "./types"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import type {FleetStatusResponse, FleetProbe, FleetCommand, FleetGroup, FleetCommandRequest} from "./types"
+import {useState} from "react";
 
 // ─── Fleet Overview KPI Widget ───────────────────────────────────────────────
 
@@ -315,6 +320,166 @@ export function OfflineProbesWidget() {
                         </ScrollArea>
                     </div>
                 )}
+            </CardContent>
+        </Card>
+    )
+}
+export function UnenrolledCountWidget() {
+    const { data: unenrolled = [], isLoading } = useQuery({
+        queryKey: ["fleet-unenrolled-probes"],
+        queryFn: async () => {
+            const res = await fetch("/api/v1/fleet/unenrolled-probes")
+            if (!res.ok) throw new Error("Failed to fetch unenrolled probes")
+            return res.json()
+        },
+        refetchInterval: 15000,
+    })
+
+    if (isLoading) {
+        return (
+            <Card>
+                <CardContent className="flex items-center justify-center h-[140px]">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </CardContent>
+            </Card>
+        )
+    }
+
+    return (
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pending Adoption</CardTitle>
+                <ServerOff className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+                <div className="text-2xl font-bold">{unenrolled.length}</div>
+                <p className="text-xs text-muted-foreground">Probes awaiting fleet enrollment</p>
+                <Progress value={unenrolled.length > 0 ? 100 : 0} className="h-1.5 opacity-50" />
+            </CardContent>
+        </Card>
+    )
+}
+
+// ─── Unenrolled Probes List Widget ───────────────────────────────────────────
+export function UnenrolledListWidget({ onEnrollClick }: { onEnrollClick: (probe: any) => void }) {
+    const { data: unenrolled = [], isLoading } = useQuery({
+        queryKey: ["fleet-unenrolled-probes"],
+        queryFn: async () => {
+            const res = await fetch("/api/v1/fleet/unenrolled-probes")
+            if (!res.ok) throw new Error("Failed to fetch unenrolled probes")
+            return res.json()
+        },
+        refetchInterval: 10000,
+    })
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-sm font-medium">Available for Adoption</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+                {isLoading ? (
+                    <div className="flex items-center justify-center h-[200px]">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                ) : unenrolled.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
+                        <ServerOff className="h-8 w-8 mb-2 opacity-50" />
+                        <p className="text-sm">No new probes detected</p>
+                    </div>
+                ) : (
+                    <ScrollArea className="h-[200px] px-4">
+                        <div className="space-y-3 pb-4">
+                            {unenrolled.map((probe: any) => (
+                                <div key={probe.probe_id} className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+                                    <div>
+                                        <div className="text-sm font-mono font-medium">{probe.probe_id}</div>
+                                        <div className="text-xs text-muted-foreground">{probe.building || probe.location || "Unknown Location"}</div>
+                                    </div>
+                                    <Button size="sm" variant="secondary" onClick={() => onEnrollClick(probe)}>
+                                        <Plus className="w-4 h-4 mr-1"/> Enroll
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    </ScrollArea>
+                )}
+            </CardContent>
+        </Card>
+    )
+}
+
+// ─── Fleet Quick Actions Widget ──────────────────────────────────────────────
+export function FleetQuickActionsWidget({
+                                            groups,
+                                            onSend,
+                                            isSending
+                                        }: {
+    groups: FleetGroup[],
+    onSend: (req: FleetCommandRequest) => void,
+    isSending: boolean
+}) {
+    const [selectedGroup, setSelectedGroup] = useState<string>("")
+
+    const handleAction = (cmdType: string) => {
+        if (!selectedGroup) return
+        onSend({
+            command_type: cmdType,
+            target_all: false,
+            groups: [selectedGroup],
+            probe_ids: [],
+            strategy: "immediate",
+            payload: {}
+        })
+    }
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-sm font-medium">Quick Group Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <Label className="text-xs">Target Group</Label>
+                    <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+                        <SelectTrigger><SelectValue placeholder="Select a group..." /></SelectTrigger>
+                        <SelectContent>
+                            {groups.map(g => (
+                                <SelectItem key={g.id} value={g.name}>{g.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full justify-start"
+                        disabled={!selectedGroup || isSending}
+                        onClick={() => handleAction("fleet_reboot")}
+                    >
+                        <RotateCcw className="w-4 h-4 mr-2 text-rose-500" /> Reboot
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full justify-start"
+                        disabled={!selectedGroup || isSending}
+                        onClick={() => handleAction("fleet_status")}
+                    >
+                        <Activity className="w-4 h-4 mr-2 text-primary" /> Ping Status
+                    </Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="w-full justify-start col-span-2"
+                        disabled={!selectedGroup || isSending}
+                        onClick={() => handleAction("fleet_deep_scan")}
+                    >
+                        <Zap className="w-4 h-4 mr-2 text-amber-500" /> Force Deep Scan
+                    </Button>
+                </div>
             </CardContent>
         </Card>
     )

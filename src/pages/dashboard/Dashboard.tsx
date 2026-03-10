@@ -1,6 +1,5 @@
-import React, { useState, useCallback } from "react"
+import React, { useState, useRef, useCallback, useEffect } from "react"
 import { Responsive } from "react-grid-layout"
-import {WidthProvider} from "react-grid-layout/legacy";
 import "react-grid-layout/css/styles.css"
 import "react-resizable/css/styles.css"
 
@@ -37,7 +36,6 @@ import {
 } from "./widgetRegistry"
 import { useDashboardLayout, type PlacedWidget } from "./useDashboardLayout"
 
-const ResponsiveGridLayout = WidthProvider(Responsive)
 
 // ─── Widget Config Panel ──────────────────────────────────────────────────────
 
@@ -334,6 +332,43 @@ export default function Dashboard() {
     const [shelfOpen, setShelfOpen] = useState(false)
     const [configuringId, setConfiguringId] = useState<string | null>(null)
 
+    // Measure container width for Responsive grid (replaces WidthProvider)
+    const containerRef = useRef<HTMLDivElement>(null)
+    const [containerWidth, setContainerWidth] = useState(1200)
+
+    // Block onLayoutChange from saving during the initial mount + width-settle phase.
+    // react-grid-layout fires onLayoutChange immediately on render and again when
+    // the measured width changes breakpoints — both of which would overwrite the
+    // persisted layout before the user has touched anything.
+    const layoutReady = useRef(false)
+    const layoutReadyTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+    useEffect(() => {
+        const el = containerRef.current
+        if (!el) return
+        const ro = new ResizeObserver(entries => {
+            const width = entries[0]?.contentRect.width
+            if (!width) return
+            setContainerWidth(width)
+            // Each time width changes (breakpoint settle), reset the guard window
+            layoutReady.current = false
+            if (layoutReadyTimer.current) clearTimeout(layoutReadyTimer.current)
+            layoutReadyTimer.current = setTimeout(() => {
+                layoutReady.current = true
+            }, 300)
+        })
+        ro.observe(el)
+        setContainerWidth(el.offsetWidth)
+        // Allow saves after initial mount settles
+        layoutReadyTimer.current = setTimeout(() => {
+            layoutReady.current = true
+        }, 300)
+        return () => {
+            ro.disconnect()
+            if (layoutReadyTimer.current) clearTimeout(layoutReadyTimer.current)
+        }
+    }, [])
+
     const configuringWidget = configuringId ? widgets.find(w => w.instanceId === configuringId) : null
     const configuringDef = configuringWidget ? WIDGET_MAP[configuringWidget.widgetId] : null
 
@@ -441,7 +476,10 @@ export default function Dashboard() {
 
                 {/* ── Grid Canvas ── */}
                 {widgets.length > 0 && (
-                    <div className={`relative transition-all duration-300 ${isEditMode ? "rounded-xl ring-2 ring-primary/20 ring-offset-2" : ""}`}>
+                    <div
+                        ref={containerRef}
+                        className={`relative transition-all duration-300 ${isEditMode ? "rounded-xl ring-2 ring-primary/20 ring-offset-2" : ""}`}
+                    >
                         {/* Edit grid background pattern */}
                         {isEditMode && (
                             <div
@@ -453,11 +491,12 @@ export default function Dashboard() {
                             />
                         )}
 
-                        <ResponsiveGridLayout
+                        <Responsive
                             className="layout"
                             layouts={{ lg: gridLayout }}
                             breakpoints={{ lg: 1200, md: 996, sm: 768, xs: 480, xxs: 0 }}
                             cols={{ lg: 12, md: 10, sm: 6, xs: 4, xxs: 2 }}
+                            width={containerWidth}
                             rowHeight={100}
                             margin={[12, 12]}
                             containerPadding={[0, 0]}
@@ -465,7 +504,9 @@ export default function Dashboard() {
                             isResizable={isEditMode}
                             draggableHandle=".drag-handle"
                             compactType="vertical"
-                            onLayoutChange={(layout) => updateLayout(layout)}
+                            onLayoutChange={(layout) => {
+                                if (layoutReady.current) updateLayout(layout)
+                            }}
                             useCSSTransforms
                         >
                             {widgets.map(widget => {
@@ -565,7 +606,7 @@ export default function Dashboard() {
                                     </div>
                                 )
                             })}
-                        </ResponsiveGridLayout>
+                        </Responsive>
                     </div>
                 )}
 

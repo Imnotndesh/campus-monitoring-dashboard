@@ -109,3 +109,13 @@ export type FleetCommandRequest = {
     ack_timeout_seconds?: number
     schedule?: { execute_at: string }
 }
+export type BaseProbe = {
+    probe_id: string;
+    location: string;
+    building: string;
+    floor: string;
+    department: string;
+    status: string;
+    firmware_version: string;
+    last_seen: string;
+};

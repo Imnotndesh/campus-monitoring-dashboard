@@ -1,10 +1,10 @@
-import { useState } from "react"
+import {useEffect, useState} from "react"
 import {
-    Activity, AlertCircle, CheckCircle2, ChevronRight, Circle,
-    Clock, Cpu, Layers, Loader2, MoreHorizontal, Play,
-    Plus, RefreshCw, Send, Server, Settings, ShieldCheck,
+    Activity, CheckCircle2, ChevronRight,
+    Clock, Layers, Loader2, MoreHorizontal, Play,
+    Plus, RefreshCw, Send, Server,
     Tag, Terminal, Trash2, Users, XCircle, Zap,
-    Radio, RotateCcw, Download, FileText, MapPin
+    Radio, RotateCcw, Download, FileText, MapPin, X
 } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,7 +34,9 @@ import {
 import { Separator } from "@/components/ui/separator"
 
 import { useFleetViewModel } from "./useFleetViewModel"
-import type { FleetCommandRequest, FleetProbe } from "./types"
+import type {BaseProbe, FleetCommandRequest, FleetProbe} from "./types"
+import {FleetQuickActionsWidget, UnenrolledCountWidget, UnenrolledListWidget} from "./FleetWidgets.tsx";
+import {useQuery} from "@tanstack/react-query";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -400,12 +402,23 @@ function CreateTemplateDialog({
 function ProbeDetailPanel({
                               probe, onUnenroll, onClose, groups, onSendCommand
                           }: {
+
     probe: FleetProbe
     onUnenroll: () => void
     onClose: () => void
     groups: ReturnType<typeof useFleetViewModel>["groups"]
     onSendCommand: (req: FleetCommandRequest) => void
 }) {
+    const { data: liveStatus, isLoading: isStatusLoading } = useQuery({
+        queryKey: ["probe-live-status", probe.probe_id],
+        queryFn: async () => {
+            const res = await fetch(`/api/v1/probes/${probe.probe_id}/status`)
+            if (!res.ok) throw new Error("Status not available")
+            return res.json()
+        },
+        refetchInterval: 5000,
+        retry: false,
+    })
     const [confirmUnenroll, setConfirmUnenroll] = useState(false)
 
     const statRow = (label: string, value: React.ReactNode) => (
@@ -442,98 +455,92 @@ function ProbeDetailPanel({
                     </Button>
                 </div>
 
-                <ScrollArea className="flex-1">
-                    <div className="p-4 space-y-5">
-                        {/* Live stats */}
-                        <div>
-                            <h4 className="text-[10px] font-semibold uppercase text-muted-foreground mb-2">Live Stats</h4>
-                            <div className="space-y-0">
-                                {statRow("RSSI", probe.wifi_rssi !== undefined ? `${probe.wifi_rssi} dBm` : "--")}
-                                {statRow("Free Heap", probe.free_heap !== undefined ? `${Math.round(probe.free_heap / 1024)} KB` : "--")}
-                                {statRow("Uptime", formatUptime(probe.uptime))}
-                                {statRow("MQTT", probe.mqtt_connected ? <Badge variant="outline" className="text-emerald-600 border-emerald-500/30 text-[10px] h-4">Connected</Badge> : <Badge variant="outline" className="text-rose-600 text-[10px] h-4">Offline</Badge>)}
+                <ScrollArea className="flex-1 p-4">
+                    <div className="space-y-6">
+
+                        {/* ── LIVE STATS SECTION ── */}
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                                <Activity className="h-4 w-4 text-primary" />
+                                <h4 className="text-sm font-medium">Broadcasted Stats</h4>
+                                {isStatusLoading && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground ml-2" />}
                             </div>
+
+                            {!liveStatus ? (
+                                <div className="text-xs text-muted-foreground bg-muted/50 p-4 rounded-md text-center">
+                                    {isStatusLoading ? "Fetching latest status..." : "No recent broadcast data available."}
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div className="p-3 bg-muted/40 rounded-lg border">
+                                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Heap / Memory</div>
+                                        <div className="font-mono text-sm">
+                                            {liveStatus.free_heap ? `${(liveStatus.free_heap / 1024).toFixed(1)} KB` : "--"}
+                                        </div>
+                                    </div>
+                                    <div className="p-3 bg-muted/40 rounded-lg border">
+                                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Uptime</div>
+                                        <div className="font-mono text-sm">
+                                            {liveStatus.uptime ? `${Math.floor(liveStatus.uptime / 60)}m ${liveStatus.uptime % 60}s` : "--"}
+                                        </div>
+                                    </div>
+                                    <div className="p-3 bg-muted/40 rounded-lg border">
+                                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">WiFi RSSI</div>
+                                        <div className={`font-mono text-sm ${
+                                            (liveStatus.wifi_rssi || -100) > -60 ? "text-emerald-500" :
+                                                (liveStatus.wifi_rssi || -100) > -75 ? "text-yellow-500" : "text-rose-500"
+                                        }`}>
+                                            {liveStatus.wifi_rssi ? `${liveStatus.wifi_rssi} dBm` : "--"}
+                                        </div>
+                                    </div>
+                                    <div className="p-3 bg-muted/40 rounded-lg border">
+                                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">IP Address</div>
+                                        <div className="font-mono text-sm">
+                                            {liveStatus.ip_address || "--"}
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
-                        {/* Fleet metadata */}
-                        <div>
-                            <h4 className="text-[10px] font-semibold uppercase text-muted-foreground mb-2">Fleet Metadata</h4>
-                            <div className="space-y-0">
-                                {statRow("Config Version", probe.config_version ?? "--")}
-                                {statRow("Firmware", probe.firmware_version ?? "--")}
-                                {statRow("Commands Run", probe.commands_processed ?? "--")}
-                                {statRow("Last Command", probe.last_command ?? "--")}
-                            </div>
-                        </div>
+                        <Separator />
 
-                        {/* Groups */}
-                        {probe.groups?.length > 0 && (
-                            <div>
-                                <h4 className="text-[10px] font-semibold uppercase text-muted-foreground mb-2">Groups</h4>
-                                <div className="flex flex-wrap gap-1.5">
-                                    {probe.groups.map(g => (
-                                        <Badge key={g} variant="secondary" className="text-[10px]">
-                                            <Users className="h-3 w-3 mr-1" />{g}
-                                        </Badge>
-                                    ))}
+                        {/* ── FLEET INFO SECTION ── */}
+                        <div className="space-y-3">
+                            <h4 className="text-sm font-medium flex items-center gap-2">
+                                <Server className="h-4 w-4 text-primary" /> Fleet Identity
+                            </h4>
+                            <div className="grid grid-cols-2 gap-y-2 text-xs">
+                                <div className="text-muted-foreground">Location</div>
+                                <div className="font-medium text-right">{probe.location || "--"}</div>
+
+                                <div className="text-muted-foreground">Enrolled By</div>
+                                <div className="font-medium text-right truncate">{probe?.managed_by ?? "--"}</div>
+
+                                <div className="text-muted-foreground">Current Firmware</div>
+                                <div className="font-mono text-right">{probe?.current_firmware ?? "latest"}</div>
+
+                                <div className="text-muted-foreground">Target Firmware</div>
+                                <div className="font-mono text-right">{probe?.target_firmware ?? "latest"}</div>
+                            </div>
+
+                            {/* Tags Display */}
+                            {probe.tags && Object.keys(probe.tags).length > 0 && (
+                                <div className="pt-2">
+                                    <div className="text-xs text-muted-foreground mb-2">Assigned Tags</div>
+                                    <div className="flex flex-wrap gap-1.5">
+                                        {Object.entries(probe.tags).map(([k, v]) => (
+                                            <Badge key={k} variant="outline" className="text-[10px] font-mono">
+                                                {k}: {v as string}
+                                            </Badge>
+                                        ))}
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-
-                        {/* Tags */}
-                        {probe.tags && Object.keys(probe.tags).length > 0 && (
-                            <div>
-                                <h4 className="text-[10px] font-semibold uppercase text-muted-foreground mb-2">Tags</h4>
-                                <div className="flex flex-wrap gap-1.5">
-                                    {Object.entries(probe.tags).map(([k, v]) => (
-                                        <Badge key={k} variant="outline" className="text-[10px]">
-                                            {k}: {v}
-                                        </Badge>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Maintenance window */}
-                        {probe.maintenance_window && (
-                            <div>
-                                <h4 className="text-[10px] font-semibold uppercase text-muted-foreground mb-2">Maintenance Window</h4>
-                                <div className="flex items-center gap-2 text-xs">
-                                    <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                                    <span>{probe.maintenance_window.start} – {probe.maintenance_window.end}</span>
-                                </div>
-                            </div>
-                        )}
-
-                        {/* Quick actions */}
-                        <div>
-                            <h4 className="text-[10px] font-semibold uppercase text-muted-foreground mb-2">Quick Actions</h4>
-                            <div className="grid grid-cols-2 gap-2">
-                                {[
-                                    { label: "Status", cmd: "fleet_status", icon: <Activity className="h-3.5 w-3.5" /> },
-                                    { label: "Deep Scan", cmd: "fleet_deep_scan", icon: <Radio className="h-3.5 w-3.5" /> },
-                                    { label: "Reboot", cmd: "fleet_reboot", icon: <RotateCcw className="h-3.5 w-3.5" /> },
-                                    { label: "OTA Update", cmd: "fleet_ota", icon: <Download className="h-3.5 w-3.5" /> },
-                                ].map(({ label, cmd, icon }) => (
-                                    <Button
-                                        key={cmd}
-                                        variant="outline"
-                                        size="sm"
-                                        className="gap-1.5 text-xs justify-start"
-                                        onClick={() => onSendCommand({
-                                            command_type: cmd,
-                                            probe_ids: [probe.probe_id],
-                                            strategy: "immediate",
-                                        })}
-                                    >
-                                        {icon} {label}
-                                    </Button>
-                                ))}
-                            </div>
+                            )}
                         </div>
                     </div>
                 </ScrollArea>
-
+                <Separator />
                 {/* Footer actions */}
                 <div className="p-4 border-t">
                     <Button
@@ -565,6 +572,161 @@ function ProbeDetailPanel({
     )
 }
 
+function SmartEnrollmentDialog({
+                                   probe,
+                                   open,
+                                   onOpenChange,
+                                   availableGroups = []
+                               }: {
+    probe: any | null,
+    open: boolean,
+    onOpenChange: (open: boolean) => void,
+    availableGroups: any[]
+}) {
+    const vm = useFleetViewModel()
+    const [selectedGroups, setSelectedGroups] = useState<string[]>([])
+    const [tags, setTags] = useState<Record<string, string>>({})
+
+    // State for manual inputs
+    const [tagKey, setTagKey] = useState("")
+    const [tagVal, setTagVal] = useState("")
+
+    useEffect(() => {
+        if (probe && open) {
+            const suggestions = vm.getSmartSuggestions(probe.building || probe.location)
+            setSelectedGroups(suggestions.groups || [])
+            setTags(suggestions.tags || {})
+            setTagKey("")
+            setTagVal("")
+        }
+    }, [probe?.probe_id, open])
+
+    const handleEnroll = () => {
+        if (!probe) return
+        vm.enrollMutation.mutate({
+            probeId: probe.probe_id,
+            req: {
+                groups: selectedGroups,
+                tags: tags,
+                location: probe.location,
+            }
+        })
+        onOpenChange(false)
+    }
+
+    // Handlers for manual entry
+    const addGroup = (groupName: string) => {
+        if (groupName && !selectedGroups.includes(groupName)) {
+            setSelectedGroups([...selectedGroups, groupName])
+        }
+    }
+
+    const removeGroup = (groupName: string) => {
+        setSelectedGroups(selectedGroups.filter(g => g !== groupName))
+    }
+
+    const addTag = () => {
+        if (tagKey && tagVal) {
+            setTags({ ...tags, [tagKey]: tagVal })
+            setTagKey("")
+            setTagVal("")
+        }
+    }
+
+    const removeTag = (key: string) => {
+        const newTags = { ...tags }
+        delete newTags[key]
+        setTags(newTags)
+    }
+
+    if (!probe) return null
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Enroll Probe: {probe.probe_id}</DialogTitle>
+                </DialogHeader>
+
+                <div className="space-y-6 py-4">
+                    <div className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+                        <MapPin className="inline w-4 h-4 mr-1 text-primary"/>
+                        Detected in <strong>{probe.building || probe.location || "Unknown"}</strong>.
+                    </div>
+
+                    {/* ── GROUPS SECTION ── */}
+                    <div className="space-y-3">
+                        <Label>Assign Groups</Label>
+                        <Select onValueChange={addGroup}>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Select a group to add..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {availableGroups.map(g => (
+                                    <SelectItem key={g.id} value={g.name}>{g.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+
+                        <div className="flex flex-wrap gap-2 mt-2">
+                            {selectedGroups.length > 0 ? selectedGroups.map(g => (
+                                <Badge key={g} variant="secondary" className="flex items-center gap-1 pr-1">
+                                    {g}
+                                    <button onClick={() => removeGroup(g)} className="hover:bg-muted-foreground/20 rounded-full p-0.5">
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </Badge>
+                            )) : <span className="text-xs text-muted-foreground">No groups assigned</span>}
+                        </div>
+                    </div>
+
+                    {/* ── TAGS SECTION ── */}
+                    <div className="space-y-3">
+                        <Label>Assign Tags</Label>
+                        <div className="flex gap-2">
+                            <Input
+                                placeholder="Key (e.g. floor)"
+                                value={tagKey}
+                                onChange={e => setTagKey(e.target.value)}
+                                className="h-9"
+                            />
+                            <Input
+                                placeholder="Value (e.g. 2nd)"
+                                value={tagVal}
+                                onChange={e => setTagVal(e.target.value)}
+                                className="h-9"
+                                onKeyDown={(e) => e.key === 'Enter' && addTag()}
+                            />
+                            <Button type="button" size="sm" onClick={addTag} disabled={!tagKey || !tagVal} className="h-9">
+                                <Plus className="w-4 h-4" />
+                            </Button>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2 mt-2">
+                            {Object.entries(tags).length > 0 ? Object.entries(tags).map(([k, v]) => (
+                                <Badge key={k} variant="outline" className="flex items-center gap-1 pr-1">
+                                    <Tag className="w-3 h-3 mr-1"/>{k}: {v}
+                                    <button onClick={() => removeTag(k)} className="hover:bg-muted-foreground/10 rounded-full p-0.5 ml-1">
+                                        <X className="w-3 h-3" />
+                                    </button>
+                                </Badge>
+                            )) : <span className="text-xs text-muted-foreground">No tags assigned</span>}
+                        </div>
+                    </div>
+                </div>
+
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={handleEnroll} disabled={vm.enrollMutation.isPending}>
+                        {vm.enrollMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        Confirm Enrollment
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
+
 // ─── Main Fleet Page ──────────────────────────────────────────────────────────
 
 export default function Fleet() {
@@ -575,6 +737,7 @@ export default function Fleet() {
     const groups = vm.groups ?? []
     const templates = vm.templates ?? []
     const commands = vm.commands ?? []
+    const [probeToEnroll, setProbeToEnroll] = useState<any | null>(null)
 
     const [sendCmdOpen, setSendCmdOpen] = useState(false)
     const [createGroupOpen, setCreateGroupOpen] = useState(false)
@@ -605,7 +768,7 @@ export default function Fleet() {
             </div>
 
             {/* ── KPI Row ── */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
                 <KpiCard
                     title="Managed Probes"
                     value={vm.fleetStatus?.total_managed ?? "--"}
@@ -614,7 +777,7 @@ export default function Fleet() {
                 />
                 <KpiCard
                     title="Groups"
-                    value={vm.fleetStatus?.groups ?? "--"}
+                    value={groups.length ?? 0}
                     desc="Active probe groups"
                     icon={<Users className="h-4 w-4 text-blue-500" />}
                 />
@@ -630,6 +793,7 @@ export default function Fleet() {
                     desc={vm.fleetStatus?.last_command ? `Last: ${vm.fleetStatus.last_command}` : "No recent commands"}
                     icon={<Zap className="h-4 w-4 text-amber-500" />}
                 />
+                <UnenrolledCountWidget />
             </div>
 
             {/* ── Main Content ── */}
@@ -669,9 +833,11 @@ export default function Fleet() {
                         </Badge>
                     </div>
 
-                    <div className="grid gap-4 lg:grid-cols-7">
-                        {/* Probe List */}
-                        <Card className={selectedProbeObj ? "lg:col-span-4" : "lg:col-span-7"}>
+                    {/* Changed grid to 12 columns for better splitting */}
+                    <div className="grid gap-4 lg:grid-cols-12">
+
+                        {/* Left Side: Probe List (Always takes 8 columns) */}
+                        <Card className="lg:col-span-8">
                             <CardContent className="p-0">
                                 {vm.isProbesLoading ? (
                                     <div className="flex items-center justify-center h-[300px]">
@@ -778,21 +944,33 @@ export default function Fleet() {
                             </CardContent>
                         </Card>
 
-                        {/* Probe Detail Panel */}
-                        {selectedProbeObj && (
-                            <Card className="lg:col-span-3 flex flex-col overflow-hidden border-t-4 border-t-primary/30">
-                                <ProbeDetailPanel
-                                    probe={selectedProbeObj}
-                                    onUnenroll={() => vm.unenrollProbe(selectedProbeObj.probe_id)}
-                                    onClose={() => vm.setSelectedProbeId(null)}
-                                    groups={groups}
-                                    onSendCommand={vm.sendCommand}
-                                />
-                            </Card>
-                        )}
+                        {/* Right Side: Dynamic Panel (Takes 4 columns) */}
+                        <div className="lg:col-span-4 space-y-4">
+                            {selectedProbeObj ? (
+                                <Card className="flex flex-col overflow-hidden border-t-4 border-t-primary/30 h-full">
+                                    <ProbeDetailPanel
+                                        probe={selectedProbeObj}
+                                        onUnenroll={() => vm.unenrollProbe(selectedProbeObj.probe_id)}
+                                        onClose={() => vm.setSelectedProbeId(null)}
+                                        groups={groups}
+                                        onSendCommand={vm.sendCommand}
+                                    />
+                                </Card>
+                            ) : (
+                                <>
+                                    <FleetQuickActionsWidget
+                                        groups={groups}
+                                        onSend={vm.sendCommand}
+                                        isSending={vm.isSendingCommand}
+                                    />
+                                    <UnenrolledListWidget
+                                        onEnrollClick={(probe) => setProbeToEnroll(probe)}
+                                    />
+                                </>
+                            )}
+                        </div>
                     </div>
                 </TabsContent>
-
                 {/* ═══════════════════ TAB: COMMANDS ═══════════════════ */}
                 <TabsContent value="commands" className="space-y-4">
                     <div className="flex items-center gap-2">
@@ -1130,6 +1308,12 @@ export default function Fleet() {
                 probes={probes}
                 onSend={vm.sendCommand}
                 isSending={vm.isSendingCommand}
+            />
+            <SmartEnrollmentDialog
+                probe={probeToEnroll}
+                open={!!probeToEnroll}
+                onOpenChange={(isOpen) => !isOpen && setProbeToEnroll(null)}
+                availableGroups={groups}
             />
             <CreateGroupDialog
                 open={createGroupOpen}
