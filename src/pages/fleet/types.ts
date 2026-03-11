@@ -31,16 +31,6 @@ export type FleetGroup = {
     created_at?: string
 }
 
-export type FleetConfigTemplate = {
-    id: number
-    name: string
-    description?: string
-    config: Record<string, any>
-    created_by?: string
-    created_at?: string
-    usage_count?: number
-}
-
 export type FleetCommand = {
     id: string
     command_type: string
@@ -132,3 +122,38 @@ export type BaseProbe = {
     firmware_version: string;
     last_seen: string;
 };
+
+export type WiFiConfig = {
+    ssid: string
+    password?: string
+    security?: string
+}
+
+export type MQTTConfig = {
+    broker: string
+    port: number
+    username?: string
+    password?: string
+    topic?: string
+}
+
+export type ScanSettings = {
+    interval: number
+    targets: string[]
+}
+
+export type FleetConfigTemplate = {
+    id: number
+    name: string
+    description?: string
+    wifi?: WiFiConfig
+    mqtt?: MQTTConfig
+    scan_settings?: ScanSettings
+    default_tags?: Record<string, string>
+    default_groups?: string[]
+    default_location?: string
+    config: Record<string, any>
+    created_by?: string
+    created_at?: string
+    usage_count?: number
+}

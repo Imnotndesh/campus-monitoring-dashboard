@@ -271,15 +271,22 @@ export function useFleetViewModel() {
         (req: FleetCommandRequest) => sendCommandMutation.mutate(req),
         [sendCommandMutation]
     )
+    const { data: locationOptions, isLoading: isLocationOptionsLoading } = useQuery({
+        queryKey: ["location-options"],
+        queryFn: async () => {
+            const res = await fetch("/api/v1/probes/locations")
+            if (!res.ok) throw new Error("Failed to fetch location options")
+            return res.json()
+        },
+    })
 
     return {
-        // State
         selectedProbeId, setSelectedProbeId,
         selectedCommandId, setSelectedCommandId,
         groupFilter, setGroupFilter,
         commandFilter, setCommandFilter,
-
-        // Data
+        locationOptions,
+        isLocationOptionsLoading,
         fleetStatus, isStatusLoading,
         probes, isProbesLoading,
         selectedProbe,

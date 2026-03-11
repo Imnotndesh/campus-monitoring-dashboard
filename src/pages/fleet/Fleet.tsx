@@ -1,10 +1,9 @@
 import {useEffect, useState} from "react"
 import {
-    Activity, CheckCircle2, ChevronRight,
-    Clock, Layers, Loader2, MoreHorizontal, Play,
+    Activity, CheckCircle2, ChevronRight, Layers, Loader2, MoreHorizontal, Play,
     Plus, RefreshCw, Send, Server,
     Tag, Terminal, Trash2, Users, XCircle, Zap,
-    Radio, RotateCcw, Download, FileText, MapPin, X
+    Radio, RotateCcw, FileText, MapPin, X
 } from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,7 +33,15 @@ import {
 import { Separator } from "@/components/ui/separator"
 
 import { useFleetViewModel } from "./useFleetViewModel"
-import type {BaseProbe, FleetCommandRequest, FleetGroup, FleetProbe} from "./types"
+import type {
+    BaseProbe,
+    FleetCommandRequest,
+    FleetGroup,
+    FleetProbe,
+    MQTTConfig,
+    ScanSettings,
+    WiFiConfig
+} from "./types"
 import {FleetQuickActionsWidget, UnenrolledCountWidget, UnenrolledListWidget} from "./FleetWidgets.tsx";
 import {useQuery} from "@tanstack/react-query";
 
@@ -306,65 +313,320 @@ function CreateGroupDialog({
     )
 }
 
-// ─── Create Template Dialog ───────────────────────────────────────────────────
+// Replace the old CreateTemplateDialog function with this:
 
 function CreateTemplateDialog({
-                                  open, onOpenChange, onCreate, isCreating
+                                  open,
+                                  onOpenChange,
+                                  onCreate,
+                                  isCreating,
+                                  groups,
+                                  locationOptions,
                               }: {
     open: boolean
     onOpenChange: (v: boolean) => void
     onCreate: (t: any) => void
     isCreating: boolean
+    groups: FleetGroup[]
+    locationOptions: any
 }) {
+    // Form state
     const [name, setName] = useState("")
-    const [desc, setDesc] = useState("")
-    const [configJson, setConfigJson] = useState('{\n  "report_interval": 60\n}')
-    const [jsonError, setJsonError] = useState("")
+    const [description, setDescription] = useState("")
+
+    // WiFi
+    const [wifi, setWifi] = useState<WiFiConfig>({ ssid: "", password: "", security: "WPA2" })
+    // MQTT
+    const [mqtt, setMqtt] = useState<MQTTConfig>({ broker: "", port: 1883, username: "", password: "", topic: "" })
+    // Scan Settings
+    const [scanSettings, setScanSettings] = useState<ScanSettings>({ interval: 60, targets: ["8.8.8.8"] })
+    // Defaults
+    const [defaultGroups, setDefaultGroups] = useState<string[]>([])
+    const [defaultTags, setDefaultTags] = useState<Record<string, string>>({})
+    const [defaultLocation, setDefaultLocation] = useState("")
+
+    // Local state for tag input
+    const [tagKey, setTagKey] = useState("")
+    const [tagVal, setTagVal] = useState("")
+
+    // Active tab
+    const [activeTab, setActiveTab] = useState("wifi")
+
+    // Helper to build the merged config (what the firmware expects)
+    const buildConfig = (): Record<string, any> => {
+        return {
+            wifi: wifi.ssid ? { ssid: wifi.ssid, password: wifi.password, security: wifi.security } : undefined,
+            mqtt: mqtt.broker ? mqtt : undefined,
+            scan: scanSettings.interval ? scanSettings : undefined,
+            // Add any other top‑level keys your firmware expects
+        }
+    }
 
     const handleCreate = () => {
-        try {
-            const config = JSON.parse(configJson)
-            setJsonError("")
-            onCreate({ name, description: desc, config })
-            onOpenChange(false)
-        } catch {
-            setJsonError("Invalid JSON")
+        if (!name) return
+
+        const templateData = {
+            name,
+            description,
+            wifi: wifi.ssid ? wifi : undefined,
+            mqtt: mqtt.broker ? mqtt : undefined,
+            scan_settings: scanSettings.interval ? scanSettings : undefined,
+            default_groups: defaultGroups.length ? defaultGroups : undefined,
+            default_tags: Object.keys(defaultTags).length ? defaultTags : undefined,
+            default_location: defaultLocation || undefined,
+            config: buildConfig(), // merged config
         }
+        onCreate(templateData)
+        onOpenChange(false)
+    }
+
+    // Handlers for tags
+    const addTag = () => {
+        if (tagKey && tagVal) {
+            setDefaultTags({ ...defaultTags, [tagKey]: tagVal })
+            setTagKey("")
+            setTagVal("")
+        }
+    }
+    const removeTag = (key: string) => {
+        const newTags = { ...defaultTags }
+        delete newTags[key]
+        setDefaultTags(newTags)
     }
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-2xl">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2">
                         <FileText className="h-4 w-4" /> Create Config Template
                     </DialogTitle>
                 </DialogHeader>
-                <div className="space-y-3 py-2">
-                    <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                            <Label>Template Name</Label>
-                            <Input placeholder="e.g. default-campus" value={name} onChange={e => setName(e.target.value)} />
+
+                <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+                    <TabsList className="grid grid-cols-5 w-full">
+                        <TabsTrigger value="general">General</TabsTrigger>
+                        <TabsTrigger value="wifi">WiFi</TabsTrigger>
+                        <TabsTrigger value="mqtt">MQTT</TabsTrigger>
+                        <TabsTrigger value="scan">Scan</TabsTrigger>
+                        <TabsTrigger value="defaults">Defaults</TabsTrigger>
+                    </TabsList>
+
+                    {/* General */}
+                    <TabsContent value="general" className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Template Name *</Label>
+                            <Input
+                                value={name}
+                                onChange={(e) => setName(e.target.value)}
+                                placeholder="e.g. default-campus"
+                            />
                         </div>
-                        <div className="space-y-1.5">
+                        <div className="space-y-2">
                             <Label>Description</Label>
-                            <Input placeholder="Optional" value={desc} onChange={e => setDesc(e.target.value)} />
+                            <Input
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                                placeholder="Optional description"
+                            />
                         </div>
-                    </div>
-                    <div className="space-y-1.5">
-                        <Label>Config (JSON) — Use <code className="text-xs bg-muted px-1 rounded">${"{probe_id}"}</code> for variables</Label>
-                        <Textarea
-                            value={configJson}
-                            onChange={e => { setConfigJson(e.target.value); setJsonError("") }}
-                            className="font-mono text-xs h-[160px] resize-none"
-                        />
-                        {jsonError && <p className="text-xs text-destructive">{jsonError}</p>}
-                    </div>
+                    </TabsContent>
+
+                    {/* WiFi */}
+                    <TabsContent value="wifi" className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>SSID</Label>
+                            <Input
+                                value={wifi.ssid}
+                                onChange={(e) => setWifi({ ...wifi, ssid: e.target.value })}
+                                placeholder="Network name"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Password</Label>
+                            <Input
+                                type="password"
+                                value={wifi.password}
+                                onChange={(e) => setWifi({ ...wifi, password: e.target.value })}
+                                placeholder="Leave blank to keep existing"
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Security</Label>
+                            <Select
+                                value={wifi.security}
+                                onValueChange={(v) => setWifi({ ...wifi, security: v })}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select security mode" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="WPA2">WPA2</SelectItem>
+                                    <SelectItem value="WPA3">WPA3</SelectItem>
+                                    <SelectItem value="none">None (open)</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </TabsContent>
+
+                    {/* MQTT */}
+                    <TabsContent value="mqtt" className="space-y-4 py-4">
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                                <Label>Broker</Label>
+                                <Input
+                                    value={mqtt.broker}
+                                    onChange={(e) => setMqtt({ ...mqtt, broker: e.target.value })}
+                                    placeholder="mqtt.example.com"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Port</Label>
+                                <Input
+                                    type="number"
+                                    value={mqtt.port}
+                                    onChange={(e) => setMqtt({ ...mqtt, port: parseInt(e.target.value) || 1883 })}
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-2">
+                                <Label>Username (optional)</Label>
+                                <Input
+                                    value={mqtt.username}
+                                    onChange={(e) => setMqtt({ ...mqtt, username: e.target.value })}
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>Password (optional)</Label>
+                                <Input
+                                    type="password"
+                                    value={mqtt.password}
+                                    onChange={(e) => setMqtt({ ...mqtt, password: e.target.value })}
+                                />
+                            </div>
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Topic Prefix (optional)</Label>
+                            <Input
+                                value={mqtt.topic}
+                                onChange={(e) => setMqtt({ ...mqtt, topic: e.target.value })}
+                                placeholder="campus/probes"
+                            />
+                        </div>
+                    </TabsContent>
+
+                    {/* Scan Settings */}
+                    <TabsContent value="scan" className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Interval (seconds)</Label>
+                            <Input
+                                type="number"
+                                value={scanSettings.interval}
+                                onChange={(e) => setScanSettings({ ...scanSettings, interval: parseInt(e.target.value) || 60 })}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label>Targets (comma separated)</Label>
+                            <Input
+                                value={scanSettings.targets.join(", ")}
+                                onChange={(e) => setScanSettings({
+                                    ...scanSettings,
+                                    targets: e.target.value.split(",").map(s => s.trim()).filter(Boolean)
+                                })}
+                                placeholder="8.8.8.8, 1.1.1.1"
+                            />
+                        </div>
+                    </TabsContent>
+
+                    {/* Defaults */}
+                    <TabsContent value="defaults" className="space-y-4 py-4">
+                        {/* Groups */}
+                        <div className="space-y-2">
+                            <Label>Default Groups</Label>
+                            <Select onValueChange={(value) => setDefaultGroups([...defaultGroups, value])}>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Add a group" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {groups.map(g => (
+                                        <SelectItem key={g.id} value={g.name}>{g.name}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                                {defaultGroups.map(g => (
+                                    <Badge key={g} variant="secondary" className="flex items-center gap-1">
+                                        {g}
+                                        <button onClick={() => setDefaultGroups(defaultGroups.filter(x => x !== g))}>
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                    </Badge>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Location with suggestions */}
+                        <div className="space-y-2">
+                            <Label>Default Location</Label>
+                            <Input
+                                value={defaultLocation}
+                                onChange={(e) => setDefaultLocation(e.target.value)}
+                                placeholder="e.g. Server Room A"
+                                list="location-suggestions"
+                            />
+                            <datalist id="location-suggestions">
+                                {locationOptions?.rooms?.map((r: string) => (
+                                    <option key={r} value={r} />
+                                ))}
+                            </datalist>
+                        </div>
+
+                        {/* Tags */}
+                        <div className="space-y-2">
+                            <Label>Default Tags</Label>
+                            <div className="flex gap-2">
+                                <Input
+                                    placeholder="Key"
+                                    value={tagKey}
+                                    onChange={(e) => setTagKey(e.target.value)}
+                                />
+                                <Input
+                                    placeholder="Value"
+                                    value={tagVal}
+                                    onChange={(e) => setTagVal(e.target.value)}
+                                    onKeyDown={(e) => e.key === 'Enter' && addTag()}
+                                />
+                                <Button size="sm" onClick={addTag} disabled={!tagKey || !tagVal}>
+                                    Add
+                                </Button>
+                            </div>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                                {Object.entries(defaultTags).map(([k, v]) => (
+                                    <Badge key={k} variant="outline" className="flex items-center gap-1">
+                                        {k}: {v}
+                                        <button onClick={() => removeTag(k)}>
+                                            <X className="h-3 w-3" />
+                                        </button>
+                                    </Badge>
+                                ))}
+                            </div>
+                        </div>
+                    </TabsContent>
+                </Tabs>
+
+                {/* Preview of merged config (read‑only) */}
+                <div className="mt-4 p-3 bg-muted/30 rounded border">
+                    <div className="text-xs font-medium mb-1">Merged Config (sent to probes):</div>
+                    <pre className="text-[10px] font-mono overflow-auto max-h-32">
+                        {JSON.stringify(buildConfig(), null, 2)}
+                    </pre>
                 </div>
+
                 <DialogFooter>
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
                     <Button onClick={handleCreate} disabled={!name || isCreating}>
-                        {isCreating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                        {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                         Create Template
                     </Button>
                 </DialogFooter>
@@ -1329,6 +1591,8 @@ export default function Fleet() {
                 onOpenChange={setCreateTemplateOpen}
                 onCreate={vm.createTemplate}
                 isCreating={vm.isCreatingTemplate}
+                groups={groups}
+                locationOptions={vm.locationOptions}
             />
         </div>
     )
