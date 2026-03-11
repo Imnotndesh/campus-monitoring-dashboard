@@ -42,11 +42,11 @@ function PingStatusLight({ probeId }: { probeId: string }) {
     const { data: pingStatus } = useQuery<PingStatus>({
         queryKey: ["probe_ping", probeId],
         queryFn: async () => {
-            const res = await fetch(`/api/v1/probes/${probeId}/ping`)
+            const res = await fetch(`/api/v1/probes/${probeId}/status`)
             if (!res.ok) return null
             return res.json()
         },
-        refetchInterval: 10000 // Refresh every 10s
+        refetchInterval: 10000
     })
 
     if (!pingStatus) {
@@ -228,13 +228,9 @@ export function ProbeCard({
                 </DropdownMenu>
             </CardHeader>
             <CardContent className="pl-5">
-                <div className="flex justify-between items-center mt-2">
-                    <PingStatusLight probeId={probe.probe_id} />
-
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Last DB Record">
-                        <Clock className="h-3 w-3" />
-                        {new Date(probe.last_seen).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                    </div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Last DB Record">
+                    <Clock className="h-3 w-3" />
+                    Last Seen ({new Date(probe.last_seen).toLocaleString([], {})})
                 </div>
             </CardContent>
         </Card>

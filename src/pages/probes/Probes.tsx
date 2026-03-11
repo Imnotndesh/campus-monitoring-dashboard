@@ -29,8 +29,6 @@ function ProbeTopologyWidget({ probeId }: { probeId: string }) {
 export default function Probes() {
     const vm = useProbesViewModel()
 
-    // Handle Config Form Submit
-    // ConfigDialogs manages its own state and passes the typed data object directly.
     const handleConfigSubmit = (data: any) => {
         if (vm.configDialogType === 'wifi') {
             vm.sendConfigCommand('set_wifi', data)
@@ -56,9 +54,6 @@ export default function Probes() {
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input placeholder="Search probes..." className="pl-8" />
                     </div>
-                    <Button onClick={() => vm.setIsAddOpen(true)}>
-                        <Plus className="mr-2 h-4 w-4" /> Register Probe
-                    </Button>
                 </div>
             </div>
 
@@ -71,7 +66,6 @@ export default function Probes() {
                         onClick={() => {
                             vm.setSelectedProbe(probe)
                             vm.setIsSheetOpen(true)
-                            // Clean outputs not needed as VM handles fetching now
                         }}
                         onDelete={() => vm.deleteProbe(probe.probe_id)}
                     />
