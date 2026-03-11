@@ -9,7 +9,8 @@ import type {
     FleetRolloutStatus,
     FleetStatusResponse,
     FleetEnrollRequest,
-    FleetCommandRequest, BaseProbe,
+    FleetCommandRequest,
+    BaseProbe,
 } from "./types"
 
 export function useFleetViewModel() {
@@ -307,5 +308,12 @@ export function useFleetViewModel() {
         applyTemplate: (templateId: number, probeIds: string[]) => applyTemplateMutation.mutate({ templateId, probeIds }),
         isApplyingTemplate: applyTemplateMutation.isPending,
         deleteTemplate: (id: number) => deleteTemplateMutation.mutate(id),
+        refreshAll: () => {
+            queryClient.invalidateQueries({ queryKey: ["fleet-status"] })
+            queryClient.invalidateQueries({ queryKey: ["fleet-probes"] })
+            queryClient.invalidateQueries({ queryKey: ["fleet-commands"] })
+            queryClient.invalidateQueries({ queryKey: ["fleet-groups"] })
+            queryClient.invalidateQueries({ queryKey: ["fleet-unenrolled-probes"] })
+        },
     }
 }

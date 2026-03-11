@@ -250,8 +250,6 @@ export function ProbeControls({
                                   onConfigDialogOpen
                               }: {
     probeId: string
-    ping: () => void
-    isPinging: boolean
     sendCommand: (params: any) => void
     isSending: boolean
     statusOutput: ProbeStatusCache | undefined

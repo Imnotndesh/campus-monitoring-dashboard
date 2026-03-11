@@ -30,27 +30,15 @@ export default function Probes() {
     const vm = useProbesViewModel()
 
     // Handle Config Form Submit
-    const handleConfigSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-        const fd = new FormData(e.target as HTMLFormElement)
-
-        let data: any = {}
+    // ConfigDialogs manages its own state and passes the typed data object directly.
+    const handleConfigSubmit = (data: any) => {
         if (vm.configDialogType === 'wifi') {
-            data = { ssid: fd.get('ssid'), password: fd.get('password') }
             vm.sendConfigCommand('set_wifi', data)
         } else if (vm.configDialogType === 'mqtt') {
-            data = {
-                broker: fd.get('broker'),
-                port: parseInt(fd.get('port') as string),
-                user: fd.get('user'),
-                password: fd.get('password')
-            }
             vm.sendConfigCommand('set_mqtt', data)
         } else if (vm.configDialogType === 'rename') {
-            data = { new_id: fd.get('new_id') }
             vm.sendConfigCommand('rename_probe', data)
         } else if (vm.configDialogType === 'ota') {
-            data = { url: fd.get('url') }
             vm.sendConfigCommand('ota_update', data)
         }
     }
@@ -158,15 +146,10 @@ export default function Probes() {
                                 <ScrollArea className="h-[calc(100vh-200px)]">
                                     <ProbeControls
                                         probeId={vm.selectedProbe.probe_id}
-                                        ping={() => vm.pingProbe(vm.selectedProbe!.probe_id)}
-                                        isPinging={vm.isPinging}
                                         sendCommand={vm.sendCommand}
                                         isSending={vm.isSendingCommand}
-
-                                        // Pass Cached Data from VM
                                         statusOutput={vm.probeStatus}
                                         configOutput={vm.probeConfig}
-
                                         onConfigDialogOpen={vm.setConfigDialogType}
                                     />
                                 </ScrollArea>

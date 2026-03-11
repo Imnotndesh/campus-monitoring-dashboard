@@ -7,7 +7,10 @@ export type FleetProbe = {
     maintenance_window?: { start: string; end: string }
     config_template_id?: number
     firmware_version?: string
+    current_firmware?: string
+    target_firmware?: string
     managed: boolean
+    managed_by?: string
     enrolled_at?: string
     enrolled_by?: string
     config_version?: number
@@ -55,11 +58,20 @@ export type FleetCommand = {
     scheduled_for?: string
 }
 
+export type FleetCommandTargetStatus = {
+    probe_id: string
+    status: string
+    response_payload?: Record<string, any>
+    error?: string
+    updated_at?: string
+}
+
 export type FleetRolloutStatus = {
     command_id: string
     command_type: string
     issued_at: string
     status: string
+    payload?: Record<string, any>
     progress: {
         total: number
         acknowledged: number
@@ -72,6 +84,7 @@ export type FleetRolloutStatus = {
         started_at: string
         completed_at?: string
     }
+    targets?: FleetCommandTargetStatus[]
 }
 
 export type FleetStatusResponse = {

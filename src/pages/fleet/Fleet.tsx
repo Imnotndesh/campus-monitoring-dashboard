@@ -552,14 +552,19 @@ function SmartEnrollmentDialog({
                                    probe,
                                    open,
                                    onOpenChange,
-                                   availableGroups = []
+                                   availableGroups = [],
+                                   onEnroll,
+                                   isEnrolling,
+                                   getSmartSuggestions
                                }: {
     probe: any | null,
     open: boolean,
     onOpenChange: (open: boolean) => void,
     availableGroups: any[]
+    onEnroll: (probeId: string, req: any) => void
+    isEnrolling: boolean
+    getSmartSuggestions: (loc: string) => { groups: string[]; tags: Record<string, string> }
 }) {
-    const vm = useFleetViewModel()
     const [selectedGroups, setSelectedGroups] = useState<string[]>([])
     const [tags, setTags] = useState<Record<string, string>>({})
 
@@ -569,7 +574,7 @@ function SmartEnrollmentDialog({
 
     useEffect(() => {
         if (probe && open) {
-            const suggestions = vm.getSmartSuggestions(probe.building || probe.location)
+            const suggestions = getSmartSuggestions(probe.building || probe.location)
             setSelectedGroups(suggestions.groups || [])
             setTags(suggestions.tags || {})
             setTagKey("")
@@ -579,13 +584,10 @@ function SmartEnrollmentDialog({
 
     const handleEnroll = () => {
         if (!probe) return
-        vm.enrollMutation.mutate({
-            probeId: probe.probe_id,
-            req: {
-                groups: selectedGroups,
-                tags: tags,
-                location: probe.location,
-            }
+        onEnroll(probe.probe_id, {
+            groups: selectedGroups,
+            tags: tags,
+            location: probe.location,
         })
         onOpenChange(false)
     }
@@ -693,8 +695,8 @@ function SmartEnrollmentDialog({
 
                 <DialogFooter>
                     <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-                    <Button onClick={handleEnroll} disabled={vm.enrollMutation.isPending}>
-                        {vm.enrollMutation.isPending && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    <Button onClick={handleEnroll} disabled={isEnrolling}>
+                        {isEnrolling && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                         Confirm Enrollment
                     </Button>
                 </DialogFooter>
@@ -734,7 +736,7 @@ export default function Fleet() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" className="gap-2">
+                    <Button variant="outline" size="sm" className="gap-2" onClick={vm.refreshAll}>
                         <RefreshCw className="h-4 w-4" /> Refresh
                     </Button>
                     <Button size="sm" className="gap-2" onClick={() => setSendCmdOpen(true)}>
@@ -1312,6 +1314,9 @@ export default function Fleet() {
                 open={!!probeToEnroll}
                 onOpenChange={(isOpen) => !isOpen && setProbeToEnroll(null)}
                 availableGroups={groups}
+                onEnroll={vm.enrollProbe}
+                isEnrolling={vm.isEnrolling}
+                getSmartSuggestions={vm.getSmartSuggestions}
             />
             <CreateGroupDialog
                 open={createGroupOpen}
