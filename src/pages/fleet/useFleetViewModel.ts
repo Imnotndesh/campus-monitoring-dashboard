@@ -10,7 +10,7 @@ import type {
     FleetStatusResponse,
     FleetEnrollRequest,
     FleetCommandRequest,
-    BaseProbe,
+    BaseProbe, ScheduledTask,
 } from "./types"
 
 export function useFleetViewModel() {
@@ -20,6 +20,7 @@ export function useFleetViewModel() {
     const [selectedCommandId, setSelectedCommandId] = useState<string | null>(null)
     const [groupFilter, setGroupFilter] = useState<string>("all")
     const [commandFilter, setCommandFilter] = useState<string>("all")
+    const [routineProbeId, setRoutineProbeId] = useState<string>("")
 
     // ── Fleet Status Overview ──────────────────────────────────────────────────
     const { data: fleetStatus, isLoading: isStatusLoading } = useQuery<FleetStatusResponse>({
@@ -280,6 +281,48 @@ export function useFleetViewModel() {
         },
     })
 
+
+    const { data: routinesData = [], isLoading: isRoutinesLoading } = useQuery<ScheduledTask[]>({
+        queryKey: ["routines", routineProbeId],
+        queryFn: async () => {
+            if (!routineProbeId) return []
+            const res = await fetch(`/api/v1/probes/${routineProbeId}/tasks`)
+            if (!res.ok) throw new Error("Failed to fetch routines")
+            return res.json()
+        },
+        enabled: !!routineProbeId,
+    })
+    const routines = routinesData ?? []
+
+    const createRoutineMutation = useMutation({
+        mutationFn: async (task: Omit<ScheduledTask, "id" | "created_at" | "updated_at">) => {
+            const res = await fetch(`/api/v1/probes/${task.probe_id}/tasks`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(task),
+            })
+            if (!res.ok) throw new Error("Failed to create routine")
+            return res.json()
+        },
+        onSuccess: () => {
+            toast.success("Routine created")
+            queryClient.invalidateQueries({ queryKey: ["routines", routineProbeId] })
+        },
+        onError: (e: Error) => toast.error(e.message),
+    })
+
+    const deleteRoutineMutation = useMutation({
+        mutationFn: async ({ probeId, taskId }: { probeId: string; taskId: string }) => {
+            const res = await fetch(`/api/v1/probes/${probeId}/tasks/${taskId}`, { method: "DELETE" })
+            if (!res.ok) throw new Error("Failed to delete routine")
+        },
+        onSuccess: () => {
+            toast.success("Routine deleted")
+            queryClient.invalidateQueries({ queryKey: ["routines", routineProbeId] })
+        },
+        onError: (e: Error) => toast.error(e.message),
+    })
+
     return {
         selectedProbeId, setSelectedProbeId,
         selectedCommandId, setSelectedCommandId,
@@ -298,8 +341,14 @@ export function useFleetViewModel() {
         isUnenrolledLoading,
         enrollMutation,
         getSmartSuggestions,
-
-        // Mutations
+        routineProbeId,
+        setRoutineProbeId,
+        routines,
+        isRoutinesLoading,
+        createRoutine: createRoutineMutation.mutate,
+        isCreatingRoutine: createRoutineMutation.isPending,
+        deleteRoutine: deleteRoutineMutation.mutate,
+        isDeletingRoutine: deleteRoutineMutation.isPending,
         enrollProbe: (probeId: string, req: FleetEnrollRequest) => enrollMutation.mutate({ probeId, req }),
         isEnrolling: enrollMutation.isPending,
         unenrollProbe: (probeId: string) => unenrollMutation.mutate(probeId),

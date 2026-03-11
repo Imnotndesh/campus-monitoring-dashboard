@@ -1,10 +1,9 @@
 import {useEffect, useState} from "react"
 import {
-    Activity, CheckCircle2, ChevronRight, Layers, Loader2, MoreHorizontal, Play,
-    Plus, RefreshCw, Send, Server,
-    Tag, Terminal, Trash2, Users, XCircle, Zap,
-    Radio, RotateCcw, FileText, MapPin, X
-} from "lucide-react"
+    Activity, CheckCircle2, ChevronRight, Clock, Layers, Loader2, MoreHorizontal, Play, Plus,
+    RefreshCw, Send, Server, Tag, Terminal, Trash2, Users, XCircle, Radio, RotateCcw,
+    FileText, MapPin, X }
+    from "lucide-react"
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -709,7 +708,7 @@ function ProbeDetailPanel({
                                     {isStatusLoading ? "Fetching latest status..." : "No recent broadcast data available."}
                                 </div>
                             ) : (
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid grid-cols-1 gap-3">
                                     <div className="p-3 bg-muted/40 rounded-lg border">
                                         <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Heap / Memory</div>
                                         <div className="font-mono text-sm">
@@ -720,21 +719,6 @@ function ProbeDetailPanel({
                                         <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">Uptime</div>
                                         <div className="font-mono text-sm">
                                             {liveStatus.uptime ? `${Math.floor(liveStatus.uptime / 60)}m ${liveStatus.uptime % 60}s` : "--"}
-                                        </div>
-                                    </div>
-                                    <div className="p-3 bg-muted/40 rounded-lg border">
-                                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">WiFi RSSI</div>
-                                        <div className={`font-mono text-sm ${
-                                            (liveStatus.wifi_rssi || -100) > -60 ? "text-emerald-500" :
-                                                (liveStatus.wifi_rssi || -100) > -75 ? "text-yellow-500" : "text-rose-500"
-                                        }`}>
-                                            {liveStatus.wifi_rssi ? `${liveStatus.wifi_rssi} dBm` : "--"}
-                                        </div>
-                                    </div>
-                                    <div className="p-3 bg-muted/40 rounded-lg border">
-                                        <div className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1">IP Address</div>
-                                        <div className="font-mono text-sm">
-                                            {liveStatus.ip_address || "--"}
                                         </div>
                                     </div>
                                 </div>
@@ -966,7 +950,142 @@ function SmartEnrollmentDialog({
         </Dialog>
     )
 }
+function CreateRoutineDialog({
+                                 open,
+                                 onOpenChange,
+                                 probeId,
+                                 onCreate,
+                                 isCreating,
+                             }: {
+    open: boolean
+    onOpenChange: (v: boolean) => void
+    probeId: string
+    onCreate: (task: any) => void
+    isCreating: boolean
+}) {
+    const [commandType, setCommandType] = useState("ping")
+    const [scheduleType, setScheduleType] = useState<"one-time" | "recurring">("one-time")
+    const [executeAt, setExecuteAt] = useState("")
+    const [cron, setCron] = useState("@daily")
+    const [payloadJson, setPayloadJson] = useState("{}")
+    const [jsonError, setJsonError] = useState("")
 
+    const handleCreate = () => {
+        let payload: Record<string, any> = {}
+        try {
+            payload = JSON.parse(payloadJson)
+            setJsonError("")
+        } catch {
+            setJsonError("Invalid JSON")
+            return
+        }
+
+        const schedule: any = {
+            type: scheduleType,
+        }
+
+        if (scheduleType === "one-time") {
+            if (!executeAt) {
+                setJsonError("Execution time required")
+                return
+            }
+            schedule.execute_at = executeAt + ":00Z"
+        } else {
+            schedule.cron = cron
+        }
+
+        const task = {
+            probe_id: probeId,
+            command_type: commandType,
+            payload,
+            schedule,
+        }
+        onCreate(task)
+        onOpenChange(false)
+    }
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-[425px]">
+                <DialogHeader>
+                    <DialogTitle>Schedule a Routine</DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                    <div className="space-y-2">
+                        <Label>Command Type</Label>
+                        <Select value={commandType} onValueChange={setCommandType}>
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="ping">Ping</SelectItem>
+                                <SelectItem value="deep_scan">Deep Scan</SelectItem>
+                                <SelectItem value="get_status">Get Status</SelectItem>
+                                <SelectItem value="restart">Restart</SelectItem>
+                                <SelectItem value="ota_update">OTA Update</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>Payload (JSON)</Label>
+                        <Textarea
+                            value={payloadJson}
+                            onChange={(e) => setPayloadJson(e.target.value)}
+                            className="font-mono text-xs h-24"
+                        />
+                        {jsonError && <p className="text-xs text-destructive">{jsonError}</p>}
+                    </div>
+
+                    <div className="space-y-2">
+                        <Label>Schedule Type</Label>
+                        <Select value={scheduleType} onValueChange={(v: any) => setScheduleType(v)}>
+                            <SelectTrigger>
+                                <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="one-time">One-time</SelectItem>
+                                <SelectItem value="recurring">Recurring</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+
+                    {scheduleType === "one-time" ? (
+                        <div className="space-y-2">
+                            <Label>Execute At</Label>
+                            <Input
+                                type="datetime-local"
+                                value={executeAt}
+                                onChange={(e) => setExecuteAt(e.target.value)}
+                            />
+                        </div>
+                    ) : (
+                        <div className="space-y-2">
+                            <Label>Cron Pattern</Label>
+                            <Select value={cron} onValueChange={setCron}>
+                                <SelectTrigger>
+                                    <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="@hourly">Hourly</SelectItem>
+                                    <SelectItem value="@daily">Daily</SelectItem>
+                                    <SelectItem value="@weekly">Weekly</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    )}
+                </div>
+                <DialogFooter>
+                    <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+                    <Button onClick={handleCreate} disabled={isCreating}>
+                        {isCreating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        Create
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )
+}
 // ─── Main Fleet Page ──────────────────────────────────────────────────────────
 
 export default function Fleet() {
@@ -982,6 +1101,7 @@ export default function Fleet() {
     const [sendCmdOpen, setSendCmdOpen] = useState(false)
     const [createGroupOpen, setCreateGroupOpen] = useState(false)
     const [createTemplateOpen, setCreateTemplateOpen] = useState(false)
+    const [createRoutineOpen, setCreateRoutineOpen] = useState(false)
 
     const selectedProbeObj = vm.selectedProbeId
         ? probes.find(p => p.probe_id === vm.selectedProbeId) ?? vm.selectedProbe
@@ -1008,7 +1128,7 @@ export default function Fleet() {
             </div>
 
             {/* ── KPI Row ── */}
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <KpiCard
                     title="Managed Probes"
                     value={vm.fleetStatus?.total_managed ?? "--"}
@@ -1026,12 +1146,6 @@ export default function Fleet() {
                     value={vm.fleetStatus?.templates ?? "--"}
                     desc="Reusable configurations"
                     icon={<Layers className="h-4 w-4 text-purple-500" />}
-                />
-                <KpiCard
-                    title="Active Rollouts"
-                    value={vm.fleetStatus?.active_rollouts ?? "--"}
-                    desc={vm.fleetStatus?.last_command ? `Last: ${vm.fleetStatus.last_command}` : "No recent commands"}
-                    icon={<Zap className="h-4 w-4 text-amber-500" />}
                 />
                 <UnenrolledCountWidget />
             </div>
@@ -1051,6 +1165,7 @@ export default function Fleet() {
                     <TabsTrigger value="templates">
                         <Layers className="h-3.5 w-3.5 mr-1.5" /> Templates
                     </TabsTrigger>
+                    <TabsTrigger value="routines"><Clock className="h-3.5 w-3.5 mr-1.5" /> Routines</TabsTrigger>
                 </TabsList>
 
                 {/* ═══════════════════ TAB: PROBES ═══════════════════ */}
@@ -1560,6 +1675,68 @@ export default function Fleet() {
                         )}
                     </div>
                 </TabsContent>
+                {/* Routines Tab */}
+                <TabsContent value="routines" className="space-y-4">
+                    <div className="flex items-center gap-2">
+                        <Select value={vm.routineProbeId} onValueChange={vm.setRoutineProbeId}>
+                            <SelectTrigger className="w-[250px]">
+                                <SelectValue placeholder="Select a probe" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {probes.map(p => (
+                                    <SelectItem key={p.probe_id} value={p.probe_id}>
+                                        {p.probe_id} ({p.location || "Unknown"})
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <Button size="sm" onClick={() => setCreateRoutineOpen(true)} disabled={!vm.routineProbeId}>
+                            <Plus className="h-4 w-4 mr-2" /> New Routine
+                        </Button>
+                    </div>
+
+                    {vm.routineProbeId && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-sm">Scheduled Tasks for {vm.routineProbeId}</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                {vm.isRoutinesLoading ? (
+                                    <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                                ) : vm.routines.length === 0 ? (
+                                    <p className="text-sm text-muted-foreground">No scheduled tasks for this probe.</p>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {vm.routines.map(task => (
+                                            <div key={task.id} className="flex items-center justify-between p-3 border rounded-lg">
+                                                <div>
+                                                    <div className="font-medium">{task.command_type}</div>
+                                                    <div className="text-xs text-muted-foreground">
+                                                        {task.schedule.type === "one-time" ? (
+                                                            <>One-time at {new Date(task.schedule.execute_at!).toLocaleString()}</>
+                                                        ) : (
+                                                            <>Recurring {task.schedule.cron}</>
+                                                        )}
+                                                        {task.next_run && <> · Next: {new Date(task.next_run).toLocaleString()}</>}
+                                                        {task.last_run && <> · Last: {new Date(task.last_run).toLocaleString()}</>}
+                                                    </div>
+                                                </div>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
+                                                    onClick={() => vm.deleteRoutine({ probeId: vm.routineProbeId, taskId: task.id })}
+                                                    disabled={vm.isDeletingRoutine}
+                                                >
+                                                    <Trash2 className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    )}
+                </TabsContent>
             </Tabs>
 
             {/* ── Dialogs ── */}
@@ -1593,6 +1770,13 @@ export default function Fleet() {
                 isCreating={vm.isCreatingTemplate}
                 groups={groups}
                 locationOptions={vm.locationOptions}
+            />
+            <CreateRoutineDialog
+                open={createRoutineOpen}
+                onOpenChange={setCreateRoutineOpen}
+                probeId={vm.routineProbeId}
+                onCreate={vm.createRoutine}
+                isCreating={vm.isCreatingRoutine}
             />
         </div>
     )

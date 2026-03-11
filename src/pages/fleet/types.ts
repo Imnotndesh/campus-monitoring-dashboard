@@ -157,3 +157,22 @@ export type FleetConfigTemplate = {
     created_at?: string
     usage_count?: number
 }
+export type ScheduledTask = {
+    id: string
+    probe_id: string
+    command_type: string
+    payload?: Record<string, any>
+    schedule: ScheduleSpec
+    created_at: string
+    updated_at: string
+    last_run?: string
+    next_run?: string
+    enabled: boolean
+}
+
+export type ScheduleSpec = {
+    type: "one-time" | "recurring"
+    execute_at?: string
+    cron?: string
+    timezone?: string
+}
