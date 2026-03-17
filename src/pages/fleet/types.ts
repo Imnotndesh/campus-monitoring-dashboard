@@ -176,3 +176,17 @@ export type ScheduleSpec = {
     cron?: string
     timezone?: string
 }
+export type ScheduledOperation = {
+    id: string
+    type: string
+    execute_at?: number
+    recurring?: boolean
+    cron?: string
+    parameters?: Record<string, any>
+}
+
+export type ProbeSchedules = {
+    probe_id: string
+    schedules: ScheduledOperation[]
+    last_updated: string
+}

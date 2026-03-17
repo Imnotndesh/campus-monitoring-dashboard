@@ -1701,31 +1701,36 @@ export default function Fleet() {
                                 <CardTitle className="text-sm">Scheduled Tasks for {vm.routineProbeId}</CardTitle>
                             </CardHeader>
                             <CardContent>
-                                {vm.isRoutinesLoading ? (
+                                {vm.isRoutineSchedulesLoading ? (
                                     <div className="flex justify-center p-4"><Loader2 className="h-6 w-6 animate-spin" /></div>
-                                ) : vm.routines.length === 0 ? (
+                                ) : vm.probeSchedulesForRoutine.length === 0 ? (
                                     <p className="text-sm text-muted-foreground">No scheduled tasks for this probe.</p>
                                 ) : (
                                     <div className="space-y-3">
-                                        {vm.routines.map(task => (
-                                            <div key={task.id} className="flex items-center justify-between p-3 border rounded-lg">
+                                        {vm.probeSchedulesForRoutine.map(schedule => (
+                                            <div key={schedule.id} className="flex items-center justify-between p-3 border rounded-lg">
                                                 <div>
-                                                    <div className="font-medium">{task.command_type}</div>
+                                                    <div className="font-medium">{schedule.type}</div>
                                                     <div className="text-xs text-muted-foreground">
-                                                        {task.schedule.type === "one-time" ? (
-                                                            <>One-time at {new Date(task.schedule.execute_at!).toLocaleString()}</>
+                                                        {schedule.recurring ? (
+                                                            <>Recurring {schedule.cron || "@daily"}</>
+                                                        ) : schedule.execute_at ? (
+                                                            <>One-time at {new Date(schedule.execute_at * 1000).toLocaleString()}</>
                                                         ) : (
-                                                            <>Recurring {task.schedule.cron}</>
+                                                            "Unknown schedule"
                                                         )}
-                                                        {task.next_run && <> · Next: {new Date(task.next_run).toLocaleString()}</>}
-                                                        {task.last_run && <> · Last: {new Date(task.last_run).toLocaleString()}</>}
                                                     </div>
+                                                    {schedule.parameters && Object.keys(schedule.parameters).length > 0 && (
+                                                        <pre className="text-[9px] mt-1 bg-black/90 text-green-400 p-1 rounded">
+                                            {JSON.stringify(schedule.parameters, null, 2)}
+                                        </pre>
+                                                    )}
                                                 </div>
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
-                                                    onClick={() => vm.deleteRoutine({ probeId: vm.routineProbeId, taskId: task.id })}
-                                                    disabled={vm.isDeletingRoutine}
+                                                    onClick={() => vm.deleteSchedule({ probeId: vm.routineProbeId, scheduleId: schedule.id })}
+                                                    disabled={vm.isDeletingSchedule}
                                                 >
                                                     <Trash2 className="h-4 w-4" />
                                                 </Button>

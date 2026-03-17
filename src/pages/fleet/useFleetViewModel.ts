@@ -10,7 +10,7 @@ import type {
     FleetStatusResponse,
     FleetEnrollRequest,
     FleetCommandRequest,
-    BaseProbe, ScheduledTask,
+    BaseProbe, ScheduledTask, ProbeSchedules,
 } from "./types"
 
 export function useFleetViewModel() {
@@ -322,6 +322,39 @@ export function useFleetViewModel() {
         },
         onError: (e: Error) => toast.error(e.message),
     })
+    const { data: probeSchedules, isLoading: isSchedulesLoading } = useQuery<ProbeSchedules>({
+        queryKey: ["probe-schedules", selectedProbeId],
+        queryFn: async () => {
+            const res = await fetch(`/api/v1/fleet/probes/${selectedProbeId}/schedules`)
+            if (!res.ok) throw new Error("Failed to fetch schedules")
+            return res.json()
+        },
+        enabled: !!selectedProbeId,
+        refetchInterval: 30000,
+    })
+    const { data: probeSchedulesForRoutine, isLoading: isRoutineSchedulesLoading } = useQuery<ProbeSchedules>({
+        queryKey: ["probe-schedules", routineProbeId],
+        queryFn: async () => {
+            const res = await fetch(`/api/v1/fleet/probes/${routineProbeId}/schedules`)
+            if (!res.ok) throw new Error("Failed to fetch schedules")
+            return res.json()
+        },
+        enabled: !!routineProbeId,
+        refetchInterval: 30000,
+    })
+    const deleteScheduleMutation = useMutation({
+        mutationFn: async ({ probeId, scheduleId }: { probeId: string; scheduleId: string }) => {
+            const res = await fetch(`/api/v1/fleet/probes/${probeId}/schedules/${scheduleId}`, {
+                method: "DELETE",
+            })
+            if (!res.ok) throw new Error("Failed to delete schedule")
+        },
+        onSuccess: () => {
+            toast.success("Schedule deleted")
+            queryClient.invalidateQueries({ queryKey: ["probe-schedules", selectedProbeId] })
+        },
+        onError: (e: Error) => toast.error(e.message),
+    })
 
     return {
         selectedProbeId, setSelectedProbeId,
@@ -344,6 +377,12 @@ export function useFleetViewModel() {
         routineProbeId,
         setRoutineProbeId,
         routines,
+        probeSchedules,
+        isSchedulesLoading,
+        deleteSchedule: deleteScheduleMutation.mutate,
+        isDeletingSchedule: deleteScheduleMutation.isPending,
+        probeSchedulesForRoutine: probeSchedulesForRoutine?.schedules ?? [],
+        isRoutineSchedulesLoading,
         isRoutinesLoading,
         createRoutine: createRoutineMutation.mutate,
         isCreatingRoutine: createRoutineMutation.isPending,
