@@ -42,11 +42,11 @@ function PingStatusLight({ probeId }: { probeId: string }) {
     const { data: pingStatus } = useQuery<PingStatus>({
         queryKey: ["probe_ping", probeId],
         queryFn: async () => {
-            const res = await fetch(`/api/v1/probes/${probeId}/ping`)
+            const res = await fetch(`/api/v1/probes/${probeId}/status`)
             if (!res.ok) return null
             return res.json()
         },
-        refetchInterval: 10000 // Refresh every 10s
+        refetchInterval: 10000
     })
 
     if (!pingStatus) {
@@ -228,13 +228,9 @@ export function ProbeCard({
                 </DropdownMenu>
             </CardHeader>
             <CardContent className="pl-5">
-                <div className="flex justify-between items-center mt-2">
-                    <PingStatusLight probeId={probe.probe_id} />
-
-                    <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Last DB Record">
-                        <Clock className="h-3 w-3" />
-                        {new Date(probe.last_seen).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                    </div>
+                <div className="flex items-center gap-1 text-xs text-muted-foreground" title="Last DB Record">
+                    <Clock className="h-3 w-3" />
+                    Last Seen ({new Date(probe.last_seen).toLocaleString([], {})})
                 </div>
             </CardContent>
         </Card>
@@ -243,17 +239,13 @@ export function ProbeCard({
 
 export function ProbeControls({
                                   probeId,
-                                  ping,
-                                  isPinging,
                                   sendCommand,
                                   isSending,
-                                  statusOutput, // Now represents cached status
-                                  configOutput, // Now represents cached config
+                                  statusOutput,
+                                  configOutput,
                                   onConfigDialogOpen
                               }: {
     probeId: string
-    ping: () => void
-    isPinging: boolean
     sendCommand: (params: any) => void
     isSending: boolean
     statusOutput: ProbeStatusCache | undefined
@@ -313,53 +305,6 @@ export function ProbeControls({
                     </CardContent>
                 </Card>
             )}
-
-            {/* ... (Quick Actions & Config Buttons remain same) ... */}
-            <div className="space-y-3">
-                <h4 className="text-xs font-bold uppercase text-muted-foreground">Quick Actions</h4>
-                <div className="grid grid-cols-2 gap-3">
-                    <Button
-                        variant="outline"
-                        className="h-auto py-3 flex flex-col gap-1 items-center hover:bg-muted"
-                        onClick={() => sendCommand({ id: probeId, type: 'get_status' })}
-                        disabled={isSending}
-                    >
-                        <RefreshCw className={`h-5 w-5 ${isSending ? 'animate-spin' : ''}`} />
-                        <span className="text-xs">Refresh Status</span>
-                    </Button>
-
-                    <Button
-                        variant="outline"
-                        className="h-auto py-3 flex flex-col gap-1 items-center hover:bg-muted"
-                        onClick={ping}
-                        disabled={isPinging}
-                    >
-                        {isPinging ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShieldCheck className="h-5 w-5 text-green-600" />}
-                        <span className="text-xs">Ping Check</span>
-                    </Button>
-
-                    <Button
-                        variant="outline"
-                        className="h-auto py-3 flex flex-col gap-1 items-center hover:bg-muted"
-                        onClick={() => sendCommand({ id: probeId, type: 'get_config' })}
-                        disabled={isSending}
-                    >
-                        <Settings className="h-5 w-5" />
-                        <span className="text-xs">Get Config</span>
-                    </Button>
-
-                    <Button
-                        variant="outline"
-                        className="h-auto py-3 flex flex-col gap-1 items-center hover:bg-muted"
-                        onClick={() => sendCommand({ id: probeId, type: 'deep_scan', payload: { duration: 5 } })}
-                        disabled={isSending}
-                    >
-                        <Zap className="h-5 w-5 text-orange-500" />
-                        <span className="text-xs">Deep Scan</span>
-                    </Button>
-                </div>
-            </div>
-
             <div className="space-y-3">
                 <h4 className="text-xs font-bold uppercase text-muted-foreground">Configuration</h4>
                 <div className="grid grid-cols-1 gap-2">

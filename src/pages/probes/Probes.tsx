@@ -29,28 +29,14 @@ function ProbeTopologyWidget({ probeId }: { probeId: string }) {
 export default function Probes() {
     const vm = useProbesViewModel()
 
-    // Handle Config Form Submit
-    const handleConfigSubmit = (e: React.FormEvent) => {
-        e.preventDefault()
-        const fd = new FormData(e.target as HTMLFormElement)
-
-        let data: any = {}
+    const handleConfigSubmit = (data: any) => {
         if (vm.configDialogType === 'wifi') {
-            data = { ssid: fd.get('ssid'), password: fd.get('password') }
             vm.sendConfigCommand('set_wifi', data)
         } else if (vm.configDialogType === 'mqtt') {
-            data = {
-                broker: fd.get('broker'),
-                port: parseInt(fd.get('port') as string),
-                user: fd.get('user'),
-                password: fd.get('password')
-            }
             vm.sendConfigCommand('set_mqtt', data)
         } else if (vm.configDialogType === 'rename') {
-            data = { new_id: fd.get('new_id') }
             vm.sendConfigCommand('rename_probe', data)
         } else if (vm.configDialogType === 'ota') {
-            data = { url: fd.get('url') }
             vm.sendConfigCommand('ota_update', data)
         }
     }
@@ -68,9 +54,6 @@ export default function Probes() {
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input placeholder="Search probes..." className="pl-8" />
                     </div>
-                    <Button onClick={() => vm.setIsAddOpen(true)}>
-                        <Plus className="mr-2 h-4 w-4" /> Register Probe
-                    </Button>
                 </div>
             </div>
 
@@ -83,7 +66,6 @@ export default function Probes() {
                         onClick={() => {
                             vm.setSelectedProbe(probe)
                             vm.setIsSheetOpen(true)
-                            // Clean outputs not needed as VM handles fetching now
                         }}
                         onDelete={() => vm.deleteProbe(probe.probe_id)}
                     />
@@ -158,15 +140,10 @@ export default function Probes() {
                                 <ScrollArea className="h-[calc(100vh-200px)]">
                                     <ProbeControls
                                         probeId={vm.selectedProbe.probe_id}
-                                        ping={() => vm.pingProbe(vm.selectedProbe!.probe_id)}
-                                        isPinging={vm.isPinging}
                                         sendCommand={vm.sendCommand}
                                         isSending={vm.isSendingCommand}
-
-                                        // Pass Cached Data from VM
                                         statusOutput={vm.probeStatus}
                                         configOutput={vm.probeConfig}
-
                                         onConfigDialogOpen={vm.setConfigDialogType}
                                     />
                                 </ScrollArea>

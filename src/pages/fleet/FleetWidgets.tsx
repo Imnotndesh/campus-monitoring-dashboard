@@ -1,15 +1,22 @@
 import { useQuery } from "@tanstack/react-query"
 import {
     Activity, CheckCircle2, Loader2, Server,
-    Users, XCircle, Zap, Layers, WifiOff
+    Users, XCircle, Zap, WifiOff,
+    ServerOff,Plus, Play,
 } from "lucide-react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import type { FleetStatusResponse, FleetProbe, FleetCommand } from "./types"
+import { Button } from "@/components/ui/button"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
+import type {FleetStatusResponse, FleetProbe, FleetCommand, FleetGroup, FleetCommandRequest} from "./types"
+import {useState} from "react";
 
-// ─── Fleet Overview KPI Widget ───────────────────────────────────────────────
+//  Fleet Overview KPI Widget
 
 export function FleetOverviewWidget() {
     const { data: status, isLoading } = useQuery<FleetStatusResponse>({
@@ -68,7 +75,7 @@ export function FleetOverviewWidget() {
     )
 }
 
-// ─── Fleet Probe List Widget ──────────────────────────────────────────────────
+//  Fleet Probe List Widget
 
 export function FleetProbeListWidget({ maxItems = 8 }: { maxItems?: number }) {
     const { data: probes = [], isLoading } = useQuery<FleetProbe[]>({
@@ -142,7 +149,7 @@ export function FleetProbeListWidget({ maxItems = 8 }: { maxItems?: number }) {
     )
 }
 
-// ─── Active Rollouts Widget ───────────────────────────────────────────────────
+//  Active Rollouts Widget
 
 export function ActiveRolloutsWidget() {
     const { data: commands = [], isLoading } = useQuery<FleetCommand[]>({
@@ -206,7 +213,7 @@ export function ActiveRolloutsWidget() {
     )
 }
 
-// ─── Fleet Groups Summary Widget ──────────────────────────────────────────────
+//  Fleet Groups Summary Widget
 
 export function FleetGroupsWidget() {
     const { data: probes = [] } = useQuery<FleetProbe[]>({
@@ -270,7 +277,7 @@ export function FleetGroupsWidget() {
     )
 }
 
-// ─── Offline Probes Alert Widget ──────────────────────────────────────────────
+//  Offline Probes Alert Widget
 
 export function OfflineProbesWidget() {
     const { data: probes = [], isLoading } = useQuery<FleetProbe[]>({
@@ -315,6 +322,198 @@ export function OfflineProbesWidget() {
                         </ScrollArea>
                     </div>
                 )}
+            </CardContent>
+        </Card>
+    )
+}
+export function UnenrolledCountWidget() {
+    const { data: unenrolled = [], isLoading } = useQuery({
+        queryKey: ["fleet-unenrolled-probes"],
+        queryFn: async () => {
+            const res = await fetch("/api/v1/fleet/unenrolled-probes")
+            if (!res.ok) throw new Error("Failed to fetch unenrolled probes")
+            return res.json()
+        },
+        refetchInterval: 15000,
+    })
+
+    if (isLoading) {
+        return (
+            <Card>
+                <CardContent className="flex items-center justify-center h-[140px]">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </CardContent>
+            </Card>
+        )
+    }
+
+    return (
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Pending Adoption</CardTitle>
+                <ServerOff className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent className="space-y-3">
+                <div className="text-2xl font-bold">{unenrolled.length}</div>
+                <p className="text-xs text-muted-foreground">Probes awaiting fleet enrollment</p>
+                <Progress value={unenrolled.length > 0 ? 100 : 0} className="h-1.5 opacity-50" />
+            </CardContent>
+        </Card>
+    )
+}
+
+//  Unenrolled Probes List Widget
+export function UnenrolledListWidget({ onEnrollClick }: { onEnrollClick: (probe: any) => void }) {
+    const { data: unenrolled = [], isLoading } = useQuery({
+        queryKey: ["fleet-unenrolled-probes"],
+        queryFn: async () => {
+            const res = await fetch("/api/v1/fleet/unenrolled-probes")
+            if (!res.ok) throw new Error("Failed to fetch unenrolled probes")
+            return res.json()
+        },
+        refetchInterval: 10000,
+    })
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-sm font-medium">Available for Adoption</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+                {isLoading ? (
+                    <div className="flex items-center justify-center h-[200px]">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                ) : unenrolled.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
+                        <ServerOff className="h-8 w-8 mb-2 opacity-50" />
+                        <p className="text-sm">No new probes detected</p>
+                    </div>
+                ) : (
+                    <ScrollArea className="h-[200px] px-4">
+                        <div className="space-y-3 pb-4">
+                            {unenrolled.map((probe: any) => (
+                                <div key={probe.probe_id} className="flex items-center justify-between p-3 border rounded-lg bg-muted/30">
+                                    <div>
+                                        <div className="text-sm font-mono font-medium">{probe.probe_id}</div>
+                                        <div className="text-xs text-muted-foreground">{probe.building || probe.location || "Unknown Location"}</div>
+                                    </div>
+                                    <Button size="sm" variant="secondary" onClick={() => onEnrollClick(probe)}>
+                                        <Plus className="w-4 h-4 mr-1"/> Enroll
+                                    </Button>
+                                </div>
+                            ))}
+                        </div>
+                    </ScrollArea>
+                )}
+            </CardContent>
+        </Card>
+    )
+}
+
+// Group Quick actions
+export function FleetQuickActionsWidget({
+                                            groups,
+                                            onSend,
+                                            isSending
+                                        }: {
+    groups: FleetGroup[],
+    onSend: (req: FleetCommandRequest) => void,
+    isSending: boolean
+}) {
+    const [selectedGroup, setSelectedGroup] = useState<string>("")
+    const [cmdType, setCmdType] = useState<string>("fleet_status")
+    const [payloadVal, setPayloadVal] = useState<string>("")
+
+    const handleExecute = () => {
+        if (!selectedGroup) return
+        let payload: Record<string, any> = {}
+
+        // Construct the correct payload structure based on the command
+        if (cmdType === "fleet_ota") payload = { url: payloadVal }
+        else if (cmdType === "fleet_deep_scan") payload = { target_ip: payloadVal || "8.8.8.8" }
+        else if (cmdType === "fleet_location") payload = { location: payloadVal }
+        else if (cmdType === "fleet_maintenance") payload = { window: payloadVal }
+        else if (cmdType === "fleet_config") {
+            try {
+                payload = JSON.parse(payloadVal)
+            } catch (e) {
+                alert("Invalid JSON format");
+                return;
+            }
+        }
+
+        onSend({
+            command_type: cmdType,
+            target_all: false,
+            groups: [selectedGroup],
+            probe_ids: [],
+            strategy: "immediate",
+            payload: payload
+        })
+    }
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-sm font-medium">Quick Group Actions</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <Label className="text-xs">Target Group</Label>
+                    <Select value={selectedGroup} onValueChange={setSelectedGroup}>
+                        <SelectTrigger><SelectValue placeholder="Select a group..." /></SelectTrigger>
+                        <SelectContent>
+                            {groups.map(g => (
+                                <SelectItem key={g.id} value={g.name}>{g.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                <div className="space-y-2">
+                    <Label className="text-xs">Fleet Action</Label>
+                    <Select value={cmdType} onValueChange={(val) => { setCmdType(val); setPayloadVal(""); }}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="fleet_status">Status Check</SelectItem>
+                            <SelectItem value="fleet_reboot">Reboot Group</SelectItem>
+                            <SelectItem value="fleet_deep_scan">Deep Scan</SelectItem>
+                            <SelectItem value="fleet_ota">OTA Update</SelectItem>
+                            <SelectItem value="fleet_config">Update Config</SelectItem>
+                            <SelectItem value="fleet_location">Set Location</SelectItem>
+                            <SelectItem value="fleet_maintenance">Set Maint. Window</SelectItem>
+                            <SelectItem value="fleet_factory_reset">Factory Reset</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+
+                {/* Dynamically render the input field only if the command requires a payload */}
+                {["fleet_ota", "fleet_deep_scan", "fleet_location", "fleet_maintenance", "fleet_config"].includes(cmdType) && (
+                    <div className="space-y-2 bg-muted/30 p-2 rounded border">
+                        <Label className="text-xs text-primary">
+                            {cmdType === "fleet_ota" ? "Firmware URL" :
+                                cmdType === "fleet_deep_scan" ? "Target IP (Default: 8.8.8.8)" :
+                                    cmdType === "fleet_location" ? "Location Label" :
+                                        cmdType === "fleet_maintenance" ? "Window (e.g. 02:00-04:00)" : "JSON Config"}
+                        </Label>
+                        {cmdType === "fleet_config" ? (
+                            <Textarea className="text-xs font-mono h-20" placeholder='{"setting": "value"}' value={payloadVal} onChange={e => setPayloadVal(e.target.value)} />
+                        ) : (
+                            <Input className="h-8 text-xs" value={payloadVal} onChange={e => setPayloadVal(e.target.value)} />
+                        )}
+                    </div>
+                )}
+
+                <Button
+                    className="w-full gap-2"
+                    size="sm"
+                    disabled={!selectedGroup || isSending}
+                    onClick={handleExecute}
+                >
+                    {isSending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                    Dispatch to Group
+                </Button>
             </CardContent>
         </Card>
     )

@@ -7,7 +7,10 @@ export type FleetProbe = {
     maintenance_window?: { start: string; end: string }
     config_template_id?: number
     firmware_version?: string
+    current_firmware?: string
+    target_firmware?: string
     managed: boolean
+    managed_by?: string
     enrolled_at?: string
     enrolled_by?: string
     config_version?: number
@@ -28,16 +31,6 @@ export type FleetGroup = {
     created_at?: string
 }
 
-export type FleetConfigTemplate = {
-    id: number
-    name: string
-    description?: string
-    config: Record<string, any>
-    created_by?: string
-    created_at?: string
-    usage_count?: number
-}
-
 export type FleetCommand = {
     id: string
     command_type: string
@@ -55,11 +48,20 @@ export type FleetCommand = {
     scheduled_for?: string
 }
 
+export type FleetCommandTargetStatus = {
+    probe_id: string
+    status: string
+    response_payload?: Record<string, any>
+    error?: string
+    updated_at?: string
+}
+
 export type FleetRolloutStatus = {
     command_id: string
     command_type: string
     issued_at: string
     status: string
+    payload?: Record<string, any>
     progress: {
         total: number
         acknowledged: number
@@ -72,6 +74,7 @@ export type FleetRolloutStatus = {
         started_at: string
         completed_at?: string
     }
+    targets?: FleetCommandTargetStatus[]
 }
 
 export type FleetStatusResponse = {
@@ -108,4 +111,82 @@ export type FleetCommandRequest = {
     completion_percent?: number
     ack_timeout_seconds?: number
     schedule?: { execute_at: string }
+}
+export type BaseProbe = {
+    probe_id: string;
+    location: string;
+    building: string;
+    floor: string;
+    department: string;
+    status: string;
+    firmware_version: string;
+    last_seen: string;
+};
+
+export type WiFiConfig = {
+    ssid: string
+    password?: string
+    security?: string
+}
+
+export type MQTTConfig = {
+    broker: string
+    port: number
+    username?: string
+    password?: string
+    topic?: string
+}
+
+export type ScanSettings = {
+    interval: number
+    targets: string[]
+}
+
+export type FleetConfigTemplate = {
+    id: number
+    name: string
+    description?: string
+    wifi?: WiFiConfig
+    mqtt?: MQTTConfig
+    scan_settings?: ScanSettings
+    default_tags?: Record<string, string>
+    default_groups?: string[]
+    default_location?: string
+    config: Record<string, any>
+    created_by?: string
+    created_at?: string
+    usage_count?: number
+}
+export type ScheduledTask = {
+    id: string
+    probe_id: string
+    command_type: string
+    payload?: Record<string, any>
+    schedule: ScheduleSpec
+    created_at: string
+    updated_at: string
+    last_run?: string
+    next_run?: string
+    enabled: boolean
+}
+
+export type ScheduleSpec = {
+    type: "one-time" | "recurring"
+    execute_at?: string
+    cron?: string
+    timezone?: string
+}
+export type ScheduledOperation = {
+    id: string
+    type: string
+    execute_at?: number
+    recurring?: boolean
+    cron?: string
+    parameters?: Record<string, any>
+}
+
+export type ProbeSchedules = {
+    probe_id: string
+    schedules: ScheduledOperation[]
+    last_updated: string
 }

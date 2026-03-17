@@ -21,7 +21,7 @@ export function useProbesViewModel() {
     })
 
     const { data: commandHistory = [] } = useQuery({
-        queryKey: ["probe_history", selectedProbe?.probe_id],
+        queryKey: ["command_history", selectedProbe?.probe_id],
         queryFn: async () => {
             if (!selectedProbe) return []
             const res = await fetch(`/api/v1/commands/probe/${selectedProbe.probe_id}?limit=20`)
@@ -95,7 +95,7 @@ export function useProbesViewModel() {
             if (variables.type === 'get_config') {
                 queryClient.invalidateQueries({ queryKey: ["probe_config", variables.id] })
             }
-            queryClient.invalidateQueries({ queryKey: ["probe_history"] })
+            queryClient.invalidateQueries({ queryKey: ["command_history", variables.id] })
         },
         onError: (err: Error) => toast.error(`Failed: ${err.message}`)
     })
