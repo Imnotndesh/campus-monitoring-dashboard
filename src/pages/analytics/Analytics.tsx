@@ -48,7 +48,7 @@ export default function Analytics() {
                             <SelectItem value="all">Whole Network</SelectItem>
                             {vm.probes.map((p) => (
                                 <SelectItem key={p.probe_id} value={p.probe_id}>
-                                    {p.location || p.probe_id}
+                                    {p.location ? `${p.location} (${p.probe_id})` : p.probe_id}
                                 </SelectItem>
                             ))}
                         </SelectContent>
@@ -577,7 +577,7 @@ export default function Analytics() {
                                             )
                                         }}
                                     >
-                                        {p.location || p.probe_id}
+                                        {p.probe_id}
                                     </Button>
                                 ))}
                             </div>
