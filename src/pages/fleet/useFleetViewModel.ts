@@ -12,6 +12,7 @@ import type {
     FleetCommandRequest,
     BaseProbe, ScheduledTask, ProbeSchedules,
 } from "./types"
+import {apiFetch} from "../../lib/api.ts";
 
 export function useFleetViewModel() {
     const queryClient = useQueryClient()
@@ -26,7 +27,7 @@ export function useFleetViewModel() {
     const { data: fleetStatus, isLoading: isStatusLoading } = useQuery<FleetStatusResponse>({
         queryKey: ["fleet-status"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/fleet/status")
+            const res = await apiFetch("/api/v1/fleet/status")
             if (!res.ok) throw new Error("Failed to fetch fleet status")
             return res.json()
         },
@@ -35,7 +36,7 @@ export function useFleetViewModel() {
     const { data: unenrolledProbes = [], isLoading: isUnenrolledLoading } = useQuery<BaseProbe[]>({
         queryKey: ["fleet-unenrolled-probes"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/fleet/unenrolled-probes")
+            const res = await apiFetch("/api/v1/fleet/unenrolled-probes")
             if (!res.ok) throw new Error("Failed to fetch unenrolled probes")
             return res.json()
         },
@@ -46,7 +47,7 @@ export function useFleetViewModel() {
         queryFn: async () => {
             const params = new URLSearchParams()
             if (groupFilter !== "all") params.set("group", groupFilter)
-            const res = await fetch(`/api/v1/fleet/probes?${params}`)
+            const res = await apiFetch(`/api/v1/fleet/probes?${params}`)
             if (!res.ok) throw new Error("Failed to fetch fleet probes")
             return res.json()
         },
@@ -58,7 +59,7 @@ export function useFleetViewModel() {
     const { data: selectedProbe } = useQuery<FleetProbe>({
         queryKey: ["fleet-probe", selectedProbeId],
         queryFn: async () => {
-            const res = await fetch(`/api/v1/fleet/probes/${selectedProbeId}`)
+            const res = await apiFetch(`/api/v1/fleet/probes/${selectedProbeId}`)
             if (!res.ok) throw new Error("Failed to fetch probe")
             return res.json()
         },
@@ -69,7 +70,7 @@ export function useFleetViewModel() {
     const { data: groups = [], isLoading: isGroupsLoading } = useQuery<FleetGroup[]>({
         queryKey: ["fleet-groups"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/fleet/groups")
+            const res = await apiFetch("/api/v1/fleet/groups")
             if (!res.ok) throw new Error("Failed to fetch groups")
             return res.json()
         },
@@ -79,7 +80,7 @@ export function useFleetViewModel() {
     const { data: templates = [], isLoading: isTemplatesLoading } = useQuery<FleetConfigTemplate[]>({
         queryKey: ["fleet-templates"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/fleet/templates")
+            const res = await apiFetch("/api/v1/fleet/templates")
             if (!res.ok) throw new Error("Failed to fetch templates")
             return res.json()
         },
@@ -91,7 +92,7 @@ export function useFleetViewModel() {
         queryFn: async () => {
             const params = new URLSearchParams({ limit: "50" })
             if (commandFilter !== "all") params.set("status", commandFilter)
-            const res = await fetch(`/api/v1/fleet/commands?${params}`)
+            const res = await apiFetch(`/api/v1/fleet/commands?${params}`)
             if (!res.ok) throw new Error("Failed to fetch commands")
             return res.json()
         },
@@ -102,7 +103,7 @@ export function useFleetViewModel() {
     const { data: commandStatus } = useQuery<FleetRolloutStatus>({
         queryKey: ["fleet-command-status", selectedCommandId],
         queryFn: async () => {
-            const res = await fetch(`/api/v1/fleet/commands/${selectedCommandId}`)
+            const res = await apiFetch(`/api/v1/fleet/commands/${selectedCommandId}`)
             if (!res.ok) throw new Error("Failed to fetch command status")
             return res.json()
         },
@@ -113,7 +114,7 @@ export function useFleetViewModel() {
     // ── Mutations ──────────────────────────────────────────────────────────────
     const enrollMutation = useMutation({
         mutationFn: async ({ probeId, req }: { probeId: string; req: FleetEnrollRequest }) => {
-            const res = await fetch(`/api/v1/fleet/probes/${probeId}/enroll`, {
+            const res = await apiFetch(`/api/v1/fleet/probes/${probeId}/enroll`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(req),
@@ -131,7 +132,7 @@ export function useFleetViewModel() {
 
     const unenrollMutation = useMutation({
         mutationFn: async (probeId: string) => {
-            const res = await fetch(`/api/v1/fleet/probes/${probeId}/unenroll`, { method: "POST" })
+            const res = await apiFetch(`/api/v1/fleet/probes/${probeId}/unenroll`, { method: "POST" })
             if (!res.ok) throw new Error("Failed to unenroll probe")
         },
         onSuccess: () => {
@@ -144,7 +145,7 @@ export function useFleetViewModel() {
 
     const sendCommandMutation = useMutation({
         mutationFn: async (req: FleetCommandRequest) => {
-            const res = await fetch("/api/v1/fleet/commands", {
+            const res = await apiFetch("/api/v1/fleet/commands", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(req),
@@ -162,7 +163,7 @@ export function useFleetViewModel() {
 
     const cancelCommandMutation = useMutation({
         mutationFn: async (commandId: string) => {
-            const res = await fetch(`/api/v1/fleet/commands/${commandId}/cancel`, { method: "POST" })
+            const res = await apiFetch(`/api/v1/fleet/commands/${commandId}/cancel`, { method: "POST" })
             if (!res.ok) throw new Error("Failed to cancel command")
         },
         onSuccess: () => {
@@ -174,7 +175,7 @@ export function useFleetViewModel() {
 
     const createGroupMutation = useMutation({
         mutationFn: async ({ name, description }: { name: string; description: string }) => {
-            const res = await fetch("/api/v1/fleet/groups", {
+            const res = await apiFetch("/api/v1/fleet/groups", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ name, description }),
@@ -191,7 +192,7 @@ export function useFleetViewModel() {
 
     const deleteGroupMutation = useMutation({
         mutationFn: async (groupId: string) => {
-            const res = await fetch(`/api/v1/fleet/groups/${groupId}`, { method: "DELETE" })
+            const res = await apiFetch(`/api/v1/fleet/groups/${groupId}`, { method: "DELETE" })
             if (!res.ok) throw new Error("Failed to delete group")
         },
         onSuccess: () => {
@@ -203,7 +204,7 @@ export function useFleetViewModel() {
 
     const createTemplateMutation = useMutation({
         mutationFn: async (template: Omit<FleetConfigTemplate, "id" | "created_at" | "usage_count">) => {
-            const res = await fetch("/api/v1/fleet/templates", {
+            const res = await apiFetch("/api/v1/fleet/templates", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(template),
@@ -220,7 +221,7 @@ export function useFleetViewModel() {
 
     const applyTemplateMutation = useMutation({
         mutationFn: async ({ templateId, probeIds }: { templateId: number; probeIds: string[] }) => {
-            const res = await fetch(`/api/v1/fleet/templates/${templateId}/apply`, {
+            const res = await apiFetch(`/api/v1/fleet/templates/${templateId}/apply`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ probe_ids: probeIds }),
@@ -236,7 +237,7 @@ export function useFleetViewModel() {
 
     const deleteTemplateMutation = useMutation({
         mutationFn: async (id: number) => {
-            const res = await fetch(`/api/v1/fleet/templates/${id}`, { method: "DELETE" })
+            const res = await apiFetch(`/api/v1/fleet/templates/${id}`, { method: "DELETE" })
             if (!res.ok) throw new Error("Failed to delete template")
         },
         onSuccess: () => {
@@ -275,7 +276,7 @@ export function useFleetViewModel() {
     const { data: locationOptions, isLoading: isLocationOptionsLoading } = useQuery({
         queryKey: ["location-options"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/probes/locations")
+            const res = await apiFetch("/api/v1/probes/locations")
             if (!res.ok) throw new Error("Failed to fetch location options")
             return res.json()
         },
@@ -286,7 +287,7 @@ export function useFleetViewModel() {
         queryKey: ["routines", routineProbeId],
         queryFn: async () => {
             if (!routineProbeId) return []
-            const res = await fetch(`/api/v1/probes/${routineProbeId}/tasks`)
+            const res = await apiFetch(`/api/v1/probes/${routineProbeId}/tasks`)
             if (!res.ok) throw new Error("Failed to fetch routines")
             return res.json()
         },
@@ -296,7 +297,7 @@ export function useFleetViewModel() {
 
     const createRoutineMutation = useMutation({
         mutationFn: async (task: Omit<ScheduledTask, "id" | "created_at" | "updated_at">) => {
-            const res = await fetch(`/api/v1/probes/${task.probe_id}/tasks`, {
+            const res = await apiFetch(`/api/v1/probes/${task.probe_id}/tasks`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(task),
@@ -313,7 +314,7 @@ export function useFleetViewModel() {
 
     const deleteRoutineMutation = useMutation({
         mutationFn: async ({ probeId, taskId }: { probeId: string; taskId: string }) => {
-            const res = await fetch(`/api/v1/probes/${probeId}/tasks/${taskId}`, { method: "DELETE" })
+            const res = await apiFetch(`/api/v1/probes/${probeId}/tasks/${taskId}`, { method: "DELETE" })
             if (!res.ok) throw new Error("Failed to delete routine")
         },
         onSuccess: () => {
@@ -325,7 +326,7 @@ export function useFleetViewModel() {
     const { data: probeSchedules, isLoading: isSchedulesLoading } = useQuery<ProbeSchedules>({
         queryKey: ["probe-schedules", selectedProbeId],
         queryFn: async () => {
-            const res = await fetch(`/api/v1/fleet/probes/${selectedProbeId}/schedules`)
+            const res = await apiFetch(`/api/v1/fleet/probes/${selectedProbeId}/schedules`)
             if (!res.ok) throw new Error("Failed to fetch schedules")
             return res.json()
         },
@@ -335,7 +336,7 @@ export function useFleetViewModel() {
     const { data: probeSchedulesForRoutine, isLoading: isRoutineSchedulesLoading } = useQuery<ProbeSchedules>({
         queryKey: ["probe-schedules", routineProbeId],
         queryFn: async () => {
-            const res = await fetch(`/api/v1/fleet/probes/${routineProbeId}/schedules`)
+            const res = await apiFetch(`/api/v1/fleet/probes/${routineProbeId}/schedules`)
             if (!res.ok) throw new Error("Failed to fetch schedules")
             return res.json()
         },
@@ -344,7 +345,7 @@ export function useFleetViewModel() {
     })
     const deleteScheduleMutation = useMutation({
         mutationFn: async ({ probeId, scheduleId }: { probeId: string; scheduleId: string }) => {
-            const res = await fetch(`/api/v1/fleet/probes/${probeId}/schedules/${scheduleId}`, {
+            const res = await apiFetch(`/api/v1/fleet/probes/${probeId}/schedules/${scheduleId}`, {
                 method: "DELETE",
             })
             if (!res.ok) throw new Error("Failed to delete schedule")

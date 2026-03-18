@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAlertGlobal } from "../../components/AlertProvider";
 import type { Alert } from "./types";
+import {apiFetch} from "../../lib/api.ts";
 
 export const useAlertsViewModel = () => {
     const queryClient = useQueryClient();
@@ -11,7 +12,7 @@ export const useAlertsViewModel = () => {
     const { data: alerts = [], isLoading } = useQuery<Alert[]>({
         queryKey: ["alerts", "active"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/alerts/active");
+            const res = await apiFetch("/api/v1/alerts/active");
             const data = await res.json();
             return Array.isArray(data) ? data : [];
         }
@@ -23,7 +24,7 @@ export const useAlertsViewModel = () => {
     }, [alerts, filter]);
 
     const acknowledge = async (id: number) => {
-        await fetch(`/api/v1/alerts/acknowledge/${id}`, { method: "PUT" });
+        await apiFetch(`/api/v1/alerts/acknowledge/${id}`, { method: "PUT" });
         queryClient.invalidateQueries({ queryKey: ["alerts"] });
     };
 

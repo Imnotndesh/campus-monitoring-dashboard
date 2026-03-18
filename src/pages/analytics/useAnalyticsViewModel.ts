@@ -14,6 +14,7 @@ import type {
     Command,
     RoamingSession,
 } from "./types"
+import {apiFetch} from "../../lib/api.ts";
 
 export function useAnalyticsViewModel() {
     const queryClient = useQueryClient()
@@ -21,8 +22,6 @@ export function useAnalyticsViewModel() {
     const [range, setRange] = useState<AnalyticsTimeRange>("24h")
     const [selectedScanId, setSelectedScanId] = useState<number | null>(null)
     const [comparisonProbes, setComparisonProbes] = useState<string[]>([])
-
-    // --- Helper: Date Ranges & Hours ---
     const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 }
     const hours = rangeToHours[range]
 
@@ -44,7 +43,7 @@ export function useAnalyticsViewModel() {
     const { data: probes = [] } = useQuery<Probe[]>({
         queryKey: ["probes"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/probes")
+            const res = await apiFetch("/api/v1/probes")
             if (!res.ok) throw new Error("Failed to fetch probes")
             return res.json()
         }
@@ -100,13 +99,13 @@ export function useAnalyticsViewModel() {
         queryKey: ["stats", range, selectedProbe],
         queryFn: async () => {
             if (selectedProbe === 'all') {
-                const res = await fetch("/api/v1/analytics/health")
+                const res = await apiFetch("/api/v1/analytics/health")
                 if (!res.ok) throw new Error("Failed to fetch health")
                 return res.json()
             } else {
                 const { start, end } = getDateRange()
                 const params = new URLSearchParams({ start_time: start, end_time: end })
-                const res = await fetch(`/api/v1/analytics/performance/${selectedProbe}?${params}`)
+                const res = await apiFetch(`/api/v1/analytics/performance/${selectedProbe}?${params}`)
                 if (!res.ok) throw new Error("Failed to fetch performance")
                 return res.json()
             }
@@ -119,7 +118,7 @@ export function useAnalyticsViewModel() {
         queryFn: async () => {
             const { start, end } = getDateRange()
             const params = new URLSearchParams({ start_time: start, end_time: end })
-            const res = await fetch(`/api/v1/analytics/channels?${params}`)
+            const res = await apiFetch(`/api/v1/analytics/channels?${params}`)
             if (!res.ok) return []
             return res.json()
         },
@@ -130,7 +129,7 @@ export function useAnalyticsViewModel() {
     const { data: apData = [] } = useQuery<APStats[]>({
         queryKey: ["aps", hours],
         queryFn: async () => {
-            const res = await fetch(`/api/v1/analytics/aps?hours=${hours}`)
+            const res = await apiFetch(`/api/v1/analytics/aps?hours=${hours}`)
             if (!res.ok) return []
             return res.json()
         },
@@ -141,7 +140,7 @@ export function useAnalyticsViewModel() {
     const { data: congestion = [] } = useQuery<CongestionData[]>({
         queryKey: ["congestion", hours],
         queryFn: async () => {
-            const res = await fetch(`/api/v1/analytics/congestion?hours=${hours}`)
+            const res = await apiFetch(`/api/v1/analytics/congestion?hours=${hours}`)
             if (!res.ok) return []
             return res.json()
         },
@@ -153,7 +152,7 @@ export function useAnalyticsViewModel() {
         queryKey: ["anomalies", selectedProbe, hours],
         queryFn: async () => {
             if (selectedProbe === 'all') return []
-            const res = await fetch(`/api/v1/analytics/anomalies/${selectedProbe}?hours=${hours}`)
+            const res = await apiFetch(`/api/v1/analytics/anomalies/${selectedProbe}?hours=${hours}`)
             if (!res.ok) return []
             return res.json()
         },
@@ -165,7 +164,7 @@ export function useAnalyticsViewModel() {
         queryKey: ["roaming", selectedProbe, hours],
         queryFn: async () => {
             if (selectedProbe === 'all') return []
-            const res = await fetch(`/api/v1/analytics/roaming/${selectedProbe}?hours=${hours}`)
+            const res = await apiFetch(`/api/v1/analytics/roaming/${selectedProbe}?hours=${hours}`)
             if (!res.ok) return []
             return res.json()
         },
@@ -179,7 +178,7 @@ export function useAnalyticsViewModel() {
             if (comparisonProbes.length < 2) return null
             const params = new URLSearchParams({ hours: hours.toString() })
             comparisonProbes.forEach(p => params.append("probe_ids", p))
-            const res = await fetch(`/api/v1/analytics/comparison?${params}`)
+            const res = await apiFetch(`/api/v1/analytics/comparison?${params}`)
             if (!res.ok) return null
             return res.json()
         },
@@ -191,7 +190,7 @@ export function useAnalyticsViewModel() {
         queryKey: ["deep_scans", selectedProbe],
         queryFn: async () => {
             if (selectedProbe === "all") return []
-            const res = await fetch(`/api/v1/commands/probe/${selectedProbe}?limit=50`)
+            const res = await apiFetch(`/api/v1/commands/probe/${selectedProbe}?limit=50`)
 
             if (!res.ok) return []
 
@@ -211,7 +210,7 @@ export function useAnalyticsViewModel() {
     // --- Mutations ---
     const triggerScanMutation = useMutation({
         mutationFn: async () => {
-            const res = await fetch(`/api/v1/probes/${selectedProbe}/command`, {
+            const res = await apiFetch(`/api/v1/probes/${selectedProbe}/command`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ command: 'deep_scan', params: {} })
@@ -230,7 +229,7 @@ export function useAnalyticsViewModel() {
 
     const deleteScanMutation = useMutation({
         mutationFn: async (id: number) => {
-            const res = await fetch(`/api/v1/commands/${id}`, { method: 'DELETE' })
+            const res = await apiFetch(`/api/v1/commands/${id}`, { method: 'DELETE' })
             if (!res.ok) throw new Error("Failed to delete")
         },
         onSuccess: (_, deletedId) => {

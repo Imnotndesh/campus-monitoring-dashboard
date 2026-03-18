@@ -2,6 +2,7 @@ import { useState} from "react"
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import { toast } from "sonner"
 import type { Probe, ProbeFormValues, ProbeStatusCache, ProbeConfigCache } from "./types"
+import {apiFetch} from "../../lib/api.ts";
 
 export function useProbesViewModel() {
     const queryClient = useQueryClient()
@@ -14,7 +15,7 @@ export function useProbesViewModel() {
     const { data: probes = [], isLoading } = useQuery<Probe[]>({
         queryKey: ["probes"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/probes")
+            const res = await apiFetch("/api/v1/probes")
             if (!res.ok) throw new Error("Failed to fetch probes")
             return res.json()
         }
@@ -24,7 +25,7 @@ export function useProbesViewModel() {
         queryKey: ["command_history", selectedProbe?.probe_id],
         queryFn: async () => {
             if (!selectedProbe) return []
-            const res = await fetch(`/api/v1/commands/probe/${selectedProbe.probe_id}?limit=20`)
+            const res = await apiFetch(`/api/v1/commands/probe/${selectedProbe.probe_id}?limit=20`)
             if (!res.ok) return []
             return res.json()
         },
@@ -36,7 +37,7 @@ export function useProbesViewModel() {
         queryKey: ["probe_status", selectedProbe?.probe_id],
         queryFn: async () => {
             if (!selectedProbe) return null
-            const res = await fetch(`/api/v1/probes/${selectedProbe.probe_id}/status`)
+            const res = await apiFetch(`/api/v1/probes/${selectedProbe.probe_id}/status`)
             if (!res.ok) return null
             return res.json()
         },
@@ -49,7 +50,7 @@ export function useProbesViewModel() {
         queryKey: ["probe_config", selectedProbe?.probe_id],
         queryFn: async () => {
             if (!selectedProbe) return null
-            const res = await fetch(`/api/v1/probes/${selectedProbe.probe_id}/config`)
+            const res = await apiFetch(`/api/v1/probes/${selectedProbe.probe_id}/config`)
             if (!res.ok) return null
             return res.json()
         },
@@ -58,7 +59,7 @@ export function useProbesViewModel() {
 
     const pingMutation = useMutation({
         mutationFn: async (probeId: string) => {
-            const res = await fetch(`/api/v1/probes/${probeId}/command`, {
+            const res = await apiFetch(`/api/v1/probes/${probeId}/command`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ command_type: "ping" })
@@ -75,7 +76,7 @@ export function useProbesViewModel() {
 
     const commandMutation = useMutation({
         mutationFn: async ({ id, type, payload = {} }: { id: string, type: string, payload?: any }) => {
-            const res = await fetch(`/api/v1/probes/${id}/command`, {
+            const res = await apiFetch(`/api/v1/probes/${id}/command`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -102,7 +103,7 @@ export function useProbesViewModel() {
 
     const configCommandMutation = useMutation({
         mutationFn: async ({ probeId, type, data }: { probeId: string, type: string, data: any }) => {
-            const res = await fetch(`/api/v1/probes/${probeId}/command`, {
+            const res = await apiFetch(`/api/v1/probes/${probeId}/command`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -123,7 +124,7 @@ export function useProbesViewModel() {
 
     const addMutation = useMutation({
         mutationFn: async (data: ProbeFormValues) => {
-            const res = await fetch("/api/v1/probes", {
+            const res = await apiFetch("/api/v1/probes", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data)
@@ -140,7 +141,7 @@ export function useProbesViewModel() {
     const updateMutation = useMutation({
         mutationFn: async (data: Partial<Probe>) => {
             if (!selectedProbe) return
-            const res = await fetch(`/api/v1/probes/${selectedProbe.probe_id}`, {
+            const res = await apiFetch(`/api/v1/probes/${selectedProbe.probe_id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(data)
@@ -155,7 +156,7 @@ export function useProbesViewModel() {
 
     const deleteMutation = useMutation({
         mutationFn: async (id: string) => {
-            const res = await fetch(`/api/v1/probes/${id}`, { method: "DELETE" })
+            const res = await apiFetch(`/api/v1/probes/${id}`, { method: "DELETE" })
             if (!res.ok) {
                 const text = await res.text()
                 throw new Error(text || "Delete failed")

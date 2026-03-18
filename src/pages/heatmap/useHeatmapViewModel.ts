@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { TopologyLayout, HeatmapResponse, FloorDetails } from "./types";
+import {apiFetch} from "../../lib/api.ts";
 
 export const useHeatmapViewModel = () => {
     const [metric, setMetric] = useState<string>("rssi");
@@ -13,7 +14,7 @@ export const useHeatmapViewModel = () => {
     const { data: layout, isLoading: isLayoutLoading } = useQuery<TopologyLayout>({
         queryKey: ["topology", "layout"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/topology/layout");
+            const res = await apiFetch("/api/v1/topology/layout");
             if (!res.ok) throw new Error("Failed to load layout");
             return res.json();
         },
@@ -23,7 +24,7 @@ export const useHeatmapViewModel = () => {
     const { data: heatmap, isLoading: isHeatmapLoading } = useQuery<HeatmapResponse>({
         queryKey: ["topology", "heatmap", metric],
         queryFn: async () => {
-            const res = await fetch(`/api/v1/topology/heatmap?metric=${metric}`);
+            const res = await apiFetch(`/api/v1/topology/heatmap?metric=${metric}`);
             if (!res.ok) throw new Error("Failed to load heatmap");
             return res.json();
         },
@@ -36,7 +37,7 @@ export const useHeatmapViewModel = () => {
             if (!selectedFloor) return null;
             const bName = encodeURIComponent(selectedFloor.buildingName);
             const fName = encodeURIComponent(selectedFloor.floorId);
-            const res = await fetch(`/api/v1/topology/building/${bName}/floor/${fName}`);
+            const res = await apiFetch(`/api/v1/topology/building/${bName}/floor/${fName}`);
             if (!res.ok) throw new Error("Failed to load floor details");
             return res.json();
         },
@@ -59,7 +60,6 @@ export const useHeatmapViewModel = () => {
         nodes.push({ id: layout.center.id, name: layout.center.name, group: 'SERVER', val: 12, color: '#3b82f6' });
 
         layout.buildings.forEach(b => {
-            // 2. Building Nodes
             nodes.push({ id: b.id, name: `Building: ${b.name}`, group: 'BUILDING', val: 8, color: '#8b5cf6' });
             links.push({ source: layout.center.id, target: b.id });
 
