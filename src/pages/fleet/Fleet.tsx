@@ -740,7 +740,7 @@ function ProbeDetailPanel({
                                 <div className="font-medium text-right truncate">{probe?.managed_by ?? "--"}</div>
 
                                 <div className="text-muted-foreground">Current Firmware</div>
-                                <div className="font-mono text-right">{probe?.current_firmware ?? "latest"}</div>
+                                <div className="font-mono text-right">{probe?.current_firmware ?? probe?.firmware_version?? "latest"}</div>
 
                                 <div className="text-muted-foreground">Target Firmware</div>
                                 <div className="font-mono text-right">{probe?.target_firmware ?? "latest"}</div>
