@@ -1,1 +1,44 @@
-<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" aria-hidden="true" role="img" class="iconify iconify--logos" width="31.88" height="32" preserveAspectRatio="xMidYMid meet" viewBox="0 0 256 257"><defs><linearGradient id="IconifyId1813088fe1fbc01fb466" x1="-.828%" x2="57.636%" y1="7.652%" y2="78.411%"><stop offset="0%" stop-color="#41D1FF"></stop><stop offset="100%" stop-color="#BD34FE"></stop></linearGradient><linearGradient id="IconifyId1813088fe1fbc01fb467" x1="43.376%" x2="50.316%" y1="2.242%" y2="89.03%"><stop offset="0%" stop-color="#FFEA83"></stop><stop offset="8.333%" stop-color="#FFDD35"></stop><stop offset="100%" stop-color="#FFA800"></stop></linearGradient></defs><path fill="url(#IconifyId1813088fe1fbc01fb466)" d="M255.153 37.938L134.897 252.976c-2.483 4.44-8.862 4.466-11.382.048L.875 37.958c-2.746-4.814 1.371-10.646 6.827-9.67l120.385 21.517a6.537 6.537 0 0 0 2.322-.004l117.867-21.483c5.438-.991 9.574 4.796 6.877 9.62Z"></path><path fill="url(#IconifyId1813088fe1fbc01fb467)" d="M185.432.063L96.44 17.501a3.268 3.268 0 0 0-2.634 3.014l-5.474 92.456a3.268 3.268 0 0 0 3.997 3.378l24.777-5.718c2.318-.535 4.413 1.507 3.936 3.838l-7.361 36.047c-.495 2.426 1.782 4.5 4.151 3.78l15.304-4.649c2.372-.72 4.652 1.36 4.15 3.788l-11.698 56.621c-.732 3.542 3.979 5.473 5.943 2.437l1.313-2.028l72.516-144.72c1.215-2.423-.88-5.186-3.54-4.672l-25.505 4.922c-2.396.462-4.435-1.77-3.759-4.114l16.646-57.705c.677-2.35-1.37-4.583-3.769-4.113Z"></path></svg>
+<svg width="680" height="680" viewBox="0 0 680 680" xmlns="http://www.w3.org/2000/svg">
+<style>
+  .bg { fill: #0f172a; }
+  .ring1 { stroke: #3b82f6; }
+  .ring2 { stroke: #2563eb; }
+  .ring3 { stroke: #1d4ed8; }
+  .core { fill: #3b82f6; }
+  .pulse { fill: #1e3a8a; }
+  .node { fill: #60a5fa; stroke: #0f172a; }
+  .line { stroke: #3b82f6; }
+</style>
+
+<rect width="680" height="680" rx="120" class="bg"/>
+
+<circle cx="340" cy="340" r="220" fill="none" class="ring3" stroke-width="1" opacity="0.2"/>
+<circle cx="340" cy="340" r="170" fill="none" class="ring2" stroke-width="1" opacity="0.3"/>
+<circle cx="340" cy="340" r="120" fill="none" class="ring1" stroke-width="1.5" opacity="0.5"/>
+
+<line x1="340" y1="210" x2="210" y2="420" stroke-width="1.5" class="line" opacity="0.4" fill="none"/>
+<line x1="340" y1="210" x2="470" y2="420" stroke-width="1.5" class="line" opacity="0.4" fill="none"/>
+<line x1="210" y1="420" x2="470" y2="420" stroke-width="1.5" class="line" opacity="0.4" fill="none"/>
+
+<line x1="340" y1="210" x2="340" y2="155" stroke-width="1.5" class="line" opacity="0.3" fill="none"/>
+<line x1="210" y1="420" x2="148" y2="472" stroke-width="1.5" class="line" opacity="0.3" fill="none"/>
+<line x1="470" y1="420" x2="532" y2="368" stroke-width="1.5" class="line" opacity="0.3" fill="none"/>
+<line x1="470" y1="420" x2="492" y2="492" stroke-width="1.5" class="line" opacity="0.3" fill="none"/>
+<line x1="210" y1="420" x2="168" y2="348" stroke-width="1.5" class="line" opacity="0.3" fill="none"/>
+
+<circle cx="340" cy="155" r="8" class="node" stroke-width="2"/>
+<circle cx="148" cy="472" r="8" class="node" stroke-width="2"/>
+<circle cx="532" cy="368" r="8" class="node" stroke-width="2"/>
+<circle cx="492" cy="492" r="8" class="node" stroke-width="2"/>
+<circle cx="168" cy="348" r="8" class="node" stroke-width="2"/>
+
+<circle cx="210" cy="420" r="14" class="node" stroke-width="2.5" opacity="0.85"/>
+<circle cx="470" cy="420" r="14" class="node" stroke-width="2.5" opacity="0.85"/>
+
+<circle cx="340" cy="340" r="40" class="pulse" opacity="0.4"/>
+<circle cx="340" cy="340" r="28" class="core"/>
+
+<path d="M326 327 L340 312 L354 327" fill="none" stroke="#0f172a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+<path d="M320 333 L340 313 L360 333" fill="none" stroke="#0f172a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" opacity="0.4"/>
+<circle cx="340" cy="343" r="4" fill="#0f172a"/>
+</svg>

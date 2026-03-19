@@ -4,6 +4,7 @@ import path from "path"
 import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
+  base: process.env.BASE_URL || '/', // dynamic base for GitHub Pages
   plugins: [
     react(),
     VitePWA({
@@ -56,6 +57,3 @@ export default defineConfig({
     }
   },
 })
-
-
-
