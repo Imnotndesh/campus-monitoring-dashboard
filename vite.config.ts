@@ -43,11 +43,12 @@ export default defineConfig({
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:9080',
+        target: 'https://localhost:9080',
         changeOrigin: true,
+        secure: false,
       },
       '/api/v1/ws': {
-        target: 'ws://localhost:9080',
+        target: 'wss://localhost:9080',
         ws: true,
         changeOrigin: true,
         secure: false,

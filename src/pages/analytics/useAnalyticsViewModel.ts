@@ -66,8 +66,8 @@ export function useAnalyticsViewModel() {
             }
 
             const [rssiRes, latencyRes] = await Promise.all([
-                fetch(`/api/v1/analytics/timeseries/rssi?${params}`),
-                fetch(`/api/v1/analytics/timeseries/latency?${params}`)
+                apiFetch(`/api/v1/analytics/timeseries/rssi?${params}`),
+                apiFetch(`/api/v1/analytics/timeseries/latency?${params}`)
             ])
 
             const rssiData: TimeSeriesPoint[] = rssiRes.ok ? await rssiRes.json() : []
