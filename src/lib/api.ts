@@ -29,12 +29,13 @@ export async function apiFetch(endpoint: string, options?: RequestInit) {
                 });
                 if (refreshRes.ok) {
                     const data = await refreshRes.json();
+                    console.log('apiFetch: token refreshed successfully');
                     localStorage.setItem('access_token', data.access_token);
-                    console.log('apiFetch: token refreshed');
                     headers['Authorization'] = `Bearer ${data.access_token}`;
                     res = await fetch(url, { ...options, headers });
                 } else {
-                    console.error('apiFetch: refresh failed');
+                    console.error('apiFetch: refresh failed', refreshRes.status);
+                    // Force logout
                     localStorage.removeItem('access_token');
                     localStorage.removeItem('refresh_token');
                     window.location.href = '/login';
@@ -48,7 +49,7 @@ export async function apiFetch(endpoint: string, options?: RequestInit) {
                 throw new Error('Session expired');
             }
         } else {
-            console.warn('apiFetch: no refresh token, redirecting to login');
+            console.warn('apiFetch: no refresh token');
             localStorage.removeItem('access_token');
             window.location.href = '/login';
             throw new Error('Session expired');
