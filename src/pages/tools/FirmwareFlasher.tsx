@@ -13,6 +13,8 @@ import { ESPLoader, Transport } from 'esptool-js';
 export default function FirmwareFlasher() {
     const { user } = useAuth();
     const [port, setPort] = useState<SerialPort | null>(null);
+    const [transport, setTransport] = useState<Transport | null>(null);
+    const [loader, setLoader] = useState<ESPLoader | null>(null);
     const [connected, setConnected] = useState(false);
     const [file, setFile] = useState<File | null>(null);
     const [firmwareUrl, setFirmwareUrl] = useState('');
@@ -46,25 +48,22 @@ export default function FirmwareFlasher() {
             const selectedPort = await navigator.serial.requestPort();
             await selectedPort.open({ baudRate: 115200 });
             setPort(selectedPort);
-            setConnected(true);
-            setStatus('idle');
             setMessage('Connected to probe. Reading chip info...');
 
-            // Create transport from the serial port
-            const transport = new Transport(selectedPort);
-            const loader = new ESPLoader({
-                transport,
-                baudrate: 115200,
-                romBaudrate: 115200,
-                enableTracing: false,
-            });
+            const newTransport = new Transport(selectedPort);
+            // ESPLoader constructor: (transport, baudrate, romBaudrate)
+            const newLoader = new ESPLoader(newTransport, 115200, 115200);
+            await newLoader.connect();
 
-            await loader.connect();
-            const chip = await loader.chip;
-            const mac = await loader.readMac();
-            setChipInfo(`${chip.getChipName()} (MAC: ${mac})`);
-            await loader.disconnect();
+            // Get chip info
+            const chip = newLoader.chip; // chip object with CHIP_NAME property
+            const mac = await newLoader.readMac();
+            setChipInfo(`${chip.CHIP_NAME} (MAC: ${mac})`);
 
+            setTransport(newTransport);
+            setLoader(newLoader);
+            setConnected(true);
+            setStatus('idle');
             setMessage('Chip detected. Ready to flash.');
         } catch (error) {
             setStatus('error');
@@ -73,13 +72,18 @@ export default function FirmwareFlasher() {
     };
 
     const disconnectSerial = async () => {
+        if (loader) {
+            await loader.disconnect();
+        }
         if (port) {
             await port.close();
-            setPort(null);
-            setConnected(false);
-            setChipInfo(null);
-            setMessage('Disconnected');
         }
+        setPort(null);
+        setTransport(null);
+        setLoader(null);
+        setConnected(false);
+        setChipInfo(null);
+        setMessage('Disconnected');
     };
 
     const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -97,7 +101,7 @@ export default function FirmwareFlasher() {
     };
 
     const flashFirmware = async () => {
-        if (!port) return;
+        if (!loader) return;
 
         setFlashing(true);
         setProgress(0);
@@ -116,26 +120,13 @@ export default function FirmwareFlasher() {
                 firmwareData = await downloadFromUrl(firmwareUrl);
             }
 
-            setMessage('Connecting to bootloader...');
-
-            // 2. Create transport and loader
-            const transport = new Transport(port);
-            const loader = new ESPLoader({
-                transport,
-                baudrate: 115200,
-                romBaudrate: 115200,
-                enableTracing: false,
-            });
-
-            await loader.connect();
+            setMessage('Running stub...');
             await loader.runStub(); // Upload stub for faster flashing
+
             setMessage('Erasing and writing...');
-
-            // 3. Flash the firmware
             const flashAddress = 0x10000; // Standard offset for ESP32 apps
-            const totalSize = firmwareData.length;
 
-            await loader.flashWrite({
+            await loader.writeFlash({
                 address: flashAddress,
                 data: firmwareData,
                 erase: true,
@@ -147,14 +138,13 @@ export default function FirmwareFlasher() {
             });
 
             setMessage('Verifying...');
-            await loader.flashVerify(flashAddress, firmwareData);
+            await loader.verifyFlash(flashAddress, firmwareData);
 
             setStatus('success');
             setMessage('Firmware flashed successfully! Resetting...');
 
             await loader.hardReset();
             await loader.disconnect();
-
         } catch (error) {
             setStatus('error');
             setMessage(`Flash failed: ${error}`);
