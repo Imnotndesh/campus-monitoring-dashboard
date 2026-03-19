@@ -1,12 +1,12 @@
-import React, { useState, useMemo } from "react"
-import { useQuery } from "@tanstack/react-query"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
-import { Input } from "@/components/ui/input"
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import React, { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
     Radio,
     AlertCircle,
@@ -20,78 +20,67 @@ import {
     Search,
     CheckCircle2,
     XCircle,
-    AlertTriangle
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import {apiFetch} from "../../lib/api.ts";
+    AlertTriangle,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { apiFetch } from "../../lib/api";
 
 interface Probe {
-    probe_id: string
-    location: string
-    building?: string
-    floor?: string
-    status: 'active' | 'inactive' | 'maintenance'
-    last_seen: string
-    ip_address?: string
-    version?: string
-    metadata?: Record<string, any>
+    probe_id: string;
+    location: string;
+    building?: string;
+    floor?: string;
+    status: "active" | "inactive" | "maintenance";
+    last_seen: string;
+    ip_address?: string;
+    version?: string;
+    metadata?: Record<string, any>;
 }
 
 interface ProbeStatusCache {
-    probe_id: string
-    uptime: number
-    free_heap: number
-    rssi: number
-    ip: string
-    ssid: string
-    temp_c: number
-    timestamp: string
-    updated_at: string
+    probe_id: string;
+    uptime: number;
+    free_heap: number;
+    rssi: number;
+    ip: string;
+    ssid: string;
+    temp_c: number;
+    timestamp: string;
+    updated_at: string;
 }
 
 interface ProbeConfigCache {
-    probe_id: string
-    wifi: Record<string, any>
-    mqtt: Record<string, any>
-    heap_free: number
-    uptime: number
-    updated_at: string
-    version?: string
+    probe_id: string;
+    wifi: Record<string, any>;
+    mqtt: Record<string, any>;
+    heap_free: number;
+    uptime: number;
+    updated_at: string;
+    version?: string;
 }
 
-// ==================== PROBE STATUS WIDGET ====================
-export function ProbeStatusWidget({
-                                      probeId,
-                                      title = "Probe Status"
-                                  }: {
-    probeId: string
-    title?: string
-}) {
+export function ProbeStatusWidget({ probeId, title = "Probe Status" }: { probeId: string; title?: string }) {
     const { data: status, isLoading, isError } = useQuery<ProbeStatusCache>({
         queryKey: ["widget-probe-status", probeId],
-        queryFn: async () => {
-            const res = await apiFetch(`/api/v1/probes/${probeId}/status`)
-            if (!res.ok) throw new Error("Failed to fetch status")
-            return res.json()
-        },
+        queryFn: async () => await apiFetch(`/api/v1/probes/${probeId}/status`),
         enabled: !!probeId && probeId !== "all",
-        refetchInterval: 5000
-    })
+        refetchInterval: 5000,
+    });
 
     const formatUptime = (seconds: number) => {
-        if (!seconds) return '--'
-        const days = Math.floor(seconds / 86400)
-        const hours = Math.floor((seconds % 86400) / 3600)
-        const mins = Math.floor((seconds % 3600) / 60)
-        if (days > 0) return `${days}d ${hours}h`
-        if (hours > 0) return `${hours}h ${mins}m`
-        return `${mins}m`
-    }
+        if (!seconds) return "--";
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+        const mins = Math.floor((seconds % 3600) / 60);
+        if (days > 0) return `${days}d ${hours}h`;
+        if (hours > 0) return `${hours}h ${mins}m`;
+        return `${mins}m`;
+    };
 
     const formatHeap = (bytes: number) => {
-        if (!bytes) return '--'
-        return `${(bytes / 1024).toFixed(1)} KB`
-    }
+        if (!bytes) return "--";
+        return `${(bytes / 1024).toFixed(1)} KB`;
+    };
 
     if (!probeId || probeId === "all") {
         return (
@@ -109,7 +98,7 @@ export function ProbeStatusWidget({
                     </div>
                 </CardContent>
             </Card>
-        )
+        );
     }
 
     if (isError) {
@@ -128,7 +117,7 @@ export function ProbeStatusWidget({
                     </div>
                 </CardContent>
             </Card>
-        )
+        );
     }
 
     return (
@@ -151,7 +140,6 @@ export function ProbeStatusWidget({
                     </div>
                 ) : status ? (
                     <div className="space-y-4">
-                        {/* Network Status */}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="p-3 border rounded-lg bg-background">
                                 <div className="flex items-center gap-2 mb-1 text-muted-foreground">
@@ -169,7 +157,6 @@ export function ProbeStatusWidget({
                             </div>
                         </div>
 
-                        {/* System Resources */}
                         <div className="grid grid-cols-2 gap-3">
                             <div className="p-3 border rounded-lg bg-background">
                                 <div className="flex items-center gap-2 mb-1 text-muted-foreground">
@@ -187,16 +174,15 @@ export function ProbeStatusWidget({
                             </div>
                         </div>
 
-                        {/* Network Details */}
                         <div className="p-3 border rounded-lg bg-muted/20">
                             <div className="space-y-2 text-xs">
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">SSID</span>
-                                    <span className="font-mono font-medium">{status.ssid || '--'}</span>
+                                    <span className="font-mono font-medium">{status.ssid || "--"}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">IP Address</span>
-                                    <span className="font-mono font-medium">{status.ip || '--'}</span>
+                                    <span className="font-mono font-medium">{status.ip || "--"}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">Last Update</span>
@@ -213,37 +199,25 @@ export function ProbeStatusWidget({
                 )}
             </CardContent>
         </Card>
-    )
+    );
 }
 
-// ==================== UNKNOWN PROBES COUNT WIDGET ====================
-export function UnknownProbesWidget({
-                                        title = "Unknown Probes"
-                                    }: {
-    title?: string
-}) {
+export function UnknownProbesWidget({ title = "Unknown Probes" }: { title?: string }) {
     const { data: probes = [], isLoading, isError } = useQuery<Probe[]>({
         queryKey: ["widget-unknown-probes"],
-        queryFn: async () => {
-            const res = await apiFetch("/api/v1/probes")
-            if (!res.ok) throw new Error("Failed to fetch probes")
-            return res.json()
-        },
-        refetchInterval: 10000
-    })
+        queryFn: async () => await apiFetch("/api/v1/probes"),
+        refetchInterval: 10000,
+    });
 
     const unknownCount = useMemo(() => {
-        return probes.filter(p =>
-            p.status === 'inactive' ||
-            !p.location ||
-            p.location === 'Unknown' ||
-            p.location === ''
-        ).length
-    }, [probes])
+        return probes.filter(
+            (p) => p.status === "inactive" || !p.location || p.location === "Unknown" || p.location === ""
+        ).length;
+    }, [probes]);
 
     const inactiveProbes = useMemo(() => {
-        return probes.filter(p => p.status === 'inactive')
-    }, [probes])
+        return probes.filter((p) => p.status === "inactive");
+    }, [probes]);
 
     if (isError) {
         return (
@@ -259,7 +233,7 @@ export function UnknownProbesWidget({
                     </div>
                 </CardContent>
             </Card>
-        )
+        );
     }
 
     return (
@@ -270,11 +244,7 @@ export function UnknownProbesWidget({
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">
-                    {isLoading ? (
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    ) : (
-                        unknownCount
-                    )}
+                    {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /> : unknownCount}
                 </div>
                 {!isLoading && (
                     <div className="flex gap-2 mt-2 flex-wrap">
@@ -283,83 +253,67 @@ export function UnknownProbesWidget({
                                 {inactiveProbes.length} Inactive
                             </Badge>
                         )}
-                        {unknownCount === 0 && (
-                            <span className="text-xs text-muted-foreground">All probes registered</span>
-                        )}
+                        {unknownCount === 0 && <span className="text-xs text-muted-foreground">All probes registered</span>}
                     </div>
                 )}
             </CardContent>
         </Card>
-    )
+    );
 }
 
-// ==================== PROBE CONFIG INFO WIDGET ====================
-export function ProbeConfigWidget({
-                                      title = "Probe Configuration",
-                                      defaultProbeId
-                                  }: {
-    title?: string
-    defaultProbeId?: string
-}) {
-    const [isDialogOpen, setIsDialogOpen] = useState(false)
-    const [selectedProbeId, setSelectedProbeId] = useState<string>(defaultProbeId || "")
-    const [searchQuery, setSearchQuery] = useState("")
-    const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "maintenance">("all")
+export function ProbeConfigWidget({ title = "Probe Configuration", defaultProbeId }: { title?: string; defaultProbeId?: string }) {
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [selectedProbeId, setSelectedProbeId] = useState<string>(defaultProbeId || "");
+    const [searchQuery, setSearchQuery] = useState("");
+    const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "maintenance">("all");
 
     const { data: probes = [] } = useQuery<Probe[]>({
         queryKey: ["widget-probes-list"],
-        queryFn: async () => {
-            const res = await apiFetch("/api/v1/probes")
-            if (!res.ok) throw new Error("Failed to fetch probes")
-            return res.json()
-        }
-    })
+        queryFn: async () => await apiFetch("/api/v1/probes"),
+    });
 
     const { data: config, isLoading: isLoadingConfig, isError } = useQuery<ProbeConfigCache>({
         queryKey: ["widget-probe-config", selectedProbeId],
-        queryFn: async () => {
-            const res = await apiFetch(`/api/v1/probes/${selectedProbeId}/config`)
-            if (!res.ok) throw new Error("Failed to fetch config")
-            return res.json()
-        },
-        enabled: !!selectedProbeId && selectedProbeId !== ""
-    })
+        queryFn: async () => await apiFetch(`/api/v1/probes/${selectedProbeId}/config`),
+        enabled: !!selectedProbeId && selectedProbeId !== "",
+    });
 
     const filteredProbes = useMemo(() => {
-        return probes.filter(p => {
-            const matchesSearch = p.probe_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        return probes.filter((p) => {
+            const matchesSearch =
+                p.probe_id.toLowerCase().includes(searchQuery.toLowerCase()) ||
                 p.location?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                p.building?.toLowerCase().includes(searchQuery.toLowerCase())
-            const matchesStatus = statusFilter === "all" || p.status === statusFilter
-            return matchesSearch && matchesStatus
-        })
-    }, [probes, searchQuery, statusFilter])
+                p.building?.toLowerCase().includes(searchQuery.toLowerCase());
+            const matchesStatus = statusFilter === "all" || p.status === statusFilter;
+            return matchesSearch && matchesStatus;
+        });
+    }, [probes, searchQuery, statusFilter]);
 
     const formatUptime = (seconds: number) => {
-        if (!seconds) return '--'
-        const days = Math.floor(seconds / 86400)
-        const hours = Math.floor((seconds % 86400) / 3600)
-        if (days > 0) return `${days}d ${hours}h`
-        return `${hours}h`
-    }
+        if (!seconds) return "--";
+        const days = Math.floor(seconds / 86400);
+        const hours = Math.floor((seconds % 86400) / 3600);
+        if (days > 0) return `${days}d ${hours}h`;
+        return `${hours}h`;
+    };
 
     const formatHeap = (bytes: number) => {
-        if (!bytes) return '--'
-        return `${(bytes / 1024).toFixed(1)} KB`
-    }
+        if (!bytes) return "--";
+        return `${(bytes / 1024).toFixed(1)} KB`;
+    };
 
     const getStatusIcon = (status: string) => {
         switch (status) {
-            case 'active':
-                return <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-            case 'inactive':
-                return <XCircle className="h-3 w-3 text-red-500" />
-            case 'maintenance':
-                return <AlertTriangle className="h-3 w-3 text-amber-500" />
+            case "active":
+                return <CheckCircle2 className="h-3 w-3 text-emerald-500" />;
+            case "inactive":
+                return <XCircle className="h-3 w-3 text-red-500" />;
+            case "maintenance":
+                return <AlertTriangle className="h-3 w-3 text-amber-500" />;
             default:
-                return <Radio className="h-3 w-3 text-muted-foreground" />
+                return <Radio className="h-3 w-3 text-muted-foreground" />;
         }
-    }
+    };
 
     return (
         <>
@@ -370,11 +324,7 @@ export function ProbeConfigWidget({
                             <Settings className="h-4 w-4" />
                             {title}
                         </span>
-                        <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => setIsDialogOpen(true)}
-                        >
+                        <Button size="sm" variant="outline" onClick={() => setIsDialogOpen(true)}>
                             {selectedProbeId ? "Change Probe" : "Select Probe"}
                         </Button>
                     </CardTitle>
@@ -397,7 +347,6 @@ export function ProbeConfigWidget({
                     ) : config ? (
                         <ScrollArea className="h-[300px]">
                             <div className="space-y-4">
-                                {/* Probe Identity */}
                                 <div className="p-3 border rounded-lg bg-muted/20">
                                     <div className="text-xs font-medium text-muted-foreground mb-2">Probe Identity</div>
                                     <div className="space-y-1 text-xs">
@@ -414,7 +363,6 @@ export function ProbeConfigWidget({
                                     </div>
                                 </div>
 
-                                {/* WiFi Configuration */}
                                 {config.wifi && Object.keys(config.wifi).length > 0 && (
                                     <div className="p-3 border rounded-lg bg-background">
                                         <div className="flex items-center gap-2 mb-2">
@@ -425,10 +373,10 @@ export function ProbeConfigWidget({
                                             {Object.entries(config.wifi).map(([key, value]) => (
                                                 <div key={key} className="flex justify-between">
                                                     <span className="text-muted-foreground capitalize">
-                                                        {key.replace(/_/g, ' ')}
+                                                        {key.replace(/_/g, " ")}
                                                     </span>
                                                     <span className="font-mono font-medium truncate max-w-[150px]">
-                                                        {key.toLowerCase().includes('password') ? '••••••••' : String(value)}
+                                                        {key.toLowerCase().includes("password") ? "••••••••" : String(value)}
                                                     </span>
                                                 </div>
                                             ))}
@@ -436,7 +384,6 @@ export function ProbeConfigWidget({
                                     </div>
                                 )}
 
-                                {/* MQTT Configuration */}
                                 {config.mqtt && Object.keys(config.mqtt).length > 0 && (
                                     <div className="p-3 border rounded-lg bg-background">
                                         <div className="flex items-center gap-2 mb-2">
@@ -447,10 +394,10 @@ export function ProbeConfigWidget({
                                             {Object.entries(config.mqtt).map(([key, value]) => (
                                                 <div key={key} className="flex justify-between">
                                                     <span className="text-muted-foreground capitalize">
-                                                        {key.replace(/_/g, ' ')}
+                                                        {key.replace(/_/g, " ")}
                                                     </span>
                                                     <span className="font-mono font-medium truncate max-w-[150px]">
-                                                        {key.toLowerCase().includes('password') ? '••••••••' : String(value)}
+                                                        {key.toLowerCase().includes("password") ? "••••••••" : String(value)}
                                                     </span>
                                                 </div>
                                             ))}
@@ -458,7 +405,6 @@ export function ProbeConfigWidget({
                                     </div>
                                 )}
 
-                                {/* System Info */}
                                 <div className="grid grid-cols-2 gap-3">
                                     <div className="p-3 border rounded-lg bg-background">
                                         <div className="flex items-center gap-2 mb-1 text-muted-foreground">
@@ -476,7 +422,6 @@ export function ProbeConfigWidget({
                                     </div>
                                 </div>
 
-                                {/* Last Updated */}
                                 <div className="text-[10px] text-muted-foreground text-center pt-2 border-t">
                                     Last updated: {new Date(config.updated_at).toLocaleString()}
                                 </div>
@@ -486,14 +431,12 @@ export function ProbeConfigWidget({
                 </CardContent>
             </Card>
 
-            {/* Probe Selection Dialog */}
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
                         <DialogTitle>Select Probe</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
-                        {/* Search and Filters */}
                         <div className="flex gap-2">
                             <div className="relative flex-1">
                                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -506,15 +449,22 @@ export function ProbeConfigWidget({
                             </div>
                             <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
                                 <TabsList>
-                                    <TabsTrigger value="all" className="text-xs">All</TabsTrigger>
-                                    <TabsTrigger value="active" className="text-xs">Active</TabsTrigger>
-                                    <TabsTrigger value="inactive" className="text-xs">Inactive</TabsTrigger>
-                                    <TabsTrigger value="maintenance" className="text-xs">Maintenance</TabsTrigger>
+                                    <TabsTrigger value="all" className="text-xs">
+                                        All
+                                    </TabsTrigger>
+                                    <TabsTrigger value="active" className="text-xs">
+                                        Active
+                                    </TabsTrigger>
+                                    <TabsTrigger value="inactive" className="text-xs">
+                                        Inactive
+                                    </TabsTrigger>
+                                    <TabsTrigger value="maintenance" className="text-xs">
+                                        Maintenance
+                                    </TabsTrigger>
                                 </TabsList>
                             </Tabs>
                         </div>
 
-                        {/* Probe List */}
                         <ScrollArea className="h-[400px] border rounded-lg">
                             <div className="p-2 space-y-2">
                                 {filteredProbes.length === 0 ? (
@@ -531,24 +481,22 @@ export function ProbeConfigWidget({
                                                 selectedProbeId === probe.probe_id && "bg-primary/5 border-primary"
                                             )}
                                             onClick={() => {
-                                                setSelectedProbeId(probe.probe_id)
-                                                setIsDialogOpen(false)
+                                                setSelectedProbeId(probe.probe_id);
+                                                setIsDialogOpen(false);
                                             }}
                                         >
                                             <div className="flex items-center justify-between">
                                                 <div className="flex items-center gap-3">
                                                     {getStatusIcon(probe.status)}
                                                     <div>
-                                                        <div className="font-mono font-medium text-sm">
-                                                            {probe.probe_id}
-                                                        </div>
+                                                        <div className="font-mono font-medium text-sm">{probe.probe_id}</div>
                                                         <div className="text-xs text-muted-foreground">
-                                                            {probe.location || 'Unknown'} {probe.building && `• ${probe.building}`}
+                                                            {probe.location || "Unknown"} {probe.building && `• ${probe.building}`}
                                                         </div>
                                                     </div>
                                                 </div>
                                                 <Badge
-                                                    variant={probe.status === 'active' ? 'default' : 'outline'}
+                                                    variant={probe.status === "active" ? "default" : "outline"}
                                                     className="text-[10px] h-5"
                                                 >
                                                     {probe.status}
@@ -563,5 +511,5 @@ export function ProbeConfigWidget({
                 </DialogContent>
             </Dialog>
         </>
-    )
+    );
 }

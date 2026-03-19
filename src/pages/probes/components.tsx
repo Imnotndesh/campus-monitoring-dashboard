@@ -28,6 +28,7 @@ import {
 import type {PingStatus, Probe, ProbeCommand, ProbeConfigCache, ProbeStatusCache} from "./types"
 import { Progress } from "@/components/ui/progress"
 import {useQuery} from "@tanstack/react-query";
+import {apiFetch} from "../../lib/api.ts";
 
 export function ProbeStatusBadge({ status }: { status: string }) {
     const styles = {
@@ -38,16 +39,13 @@ export function ProbeStatusBadge({ status }: { status: string }) {
     const s = status as keyof typeof styles
     return <Badge className={styles[s] || styles.inactive} variant="outline">{status}</Badge>
 }
+
 function PingStatusLight({ probeId }: { probeId: string }) {
     const { data: pingStatus } = useQuery<PingStatus>({
         queryKey: ["probe_ping", probeId],
-        queryFn: async () => {
-            const res = await fetch(`/api/v1/probes/${probeId}/status`)
-            if (!res.ok) return null
-            return res.json()
-        },
-        refetchInterval: 10000
-    })
+        queryFn: async () => await apiFetch(`/api/v1/probes/${probeId}/status`),
+        refetchInterval: 10000,
+    });
 
     if (!pingStatus) {
         return (
@@ -55,23 +53,29 @@ function PingStatusLight({ probeId }: { probeId: string }) {
                 <div className="h-2.5 w-2.5 rounded-full bg-slate-300 animate-pulse" />
                 <span className="text-[10px] text-muted-foreground">Syncing</span>
             </div>
-        )
+        );
     }
 
     if (pingStatus.online) {
         return (
-            <div className="flex items-center gap-1.5" title={`Online (Last seen: ${new Date(pingStatus.last_seen).toLocaleTimeString()})`}>
+            <div
+                className="flex items-center gap-1.5"
+                title={`Online (Last seen: ${new Date(pingStatus.last_seen).toLocaleTimeString()})`}
+            >
                 <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
                 <span className="text-[10px] text-muted-foreground">Online</span>
             </div>
-        )
+        );
     } else {
         return (
-            <div className="flex items-center gap-1.5" title={`Offline (Last seen: ${new Date(pingStatus.last_seen).toLocaleTimeString()})`}>
+            <div
+                className="flex items-center gap-1.5"
+                title={`Offline (Last seen: ${new Date(pingStatus.last_seen).toLocaleTimeString()})`}
+            >
                 <div className="h-2.5 w-2.5 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.6)] animate-pulse" />
                 <span className="text-[10px] text-amber-600 font-medium">Offline</span>
             </div>
-        )
+        );
     }
 }
 
