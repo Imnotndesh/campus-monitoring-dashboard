@@ -1,6 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"
-import { AuthProvider } from "@/lib/auth"
-import ProtectedRoute from "@/components/ProtectedRoute"
+import { AuthProvider } from "./lib/auth"
+import ProtectedRoute from "./components/ProtectedRoute"
 import Layout from "./components/Layout"
 import Dashboard from "./pages/dashboard/Dashboard"
 import Probes from "./pages/probes/Probes"
@@ -17,17 +17,15 @@ import OAuthCallback from "./pages/auth/OAuthCallback.tsx";
 export default function App() {
     return (
         <BrowserRouter>
-            <AuthProvider>  {/* Provide auth context to entire app */}
+            <AuthProvider>
                 <Routes>
-                    {/* Public routes – no layout */}
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/register" element={<RegisterPage />} />
                     <Route path="/setup" element={<ServerSetup />} />
                     <Route path="/oauth/callback" element={<OAuthCallback />} />
 
-                    {/* Protected routes – all require authentication */}
                     <Route element={<ProtectedRoute />}>
-                        <Route element={<Layout />}>  {/* Layout wraps all authenticated pages */}
+                        <Route element={<Layout />}>
                             <Route path="/" element={<Dashboard />} />
                             <Route path="/alerts" element={<Alerts />} />
                             <Route path="/analytics" element={<Analytics />} />
@@ -36,7 +34,6 @@ export default function App() {
                         </Route>
                     </Route>
 
-                    {/* Admin-only route – requires authentication AND admin role */}
                     <Route element={<ProtectedRoute adminOnly />}>
                         <Route element={<Layout />}>
                             <Route path="/probes" element={<Probes />} />
@@ -44,7 +41,6 @@ export default function App() {
                         </Route>
                     </Route>
 
-                    {/* Fallback redirect */}
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </AuthProvider>
