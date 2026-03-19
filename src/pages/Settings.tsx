@@ -1,4 +1,4 @@
-import { useState } from "react";
+import {useEffect, useState} from "react";
 import {
     Accordion,
     AccordionContent,
@@ -22,22 +22,19 @@ import {
     PlayCircle,
     Sun,
     Trash2,
-    User,
     Shield,
     Key,
     LogOut,
-    AlertTriangle
 } from "lucide-react"
 import {apiFetch} from "../lib/api.ts";
 
 export default function Settings() {
     const { user, logout } = useAuth();
     const queryClient = useQueryClient();
-
-    // TOTP state
     const [totpSecret, setTotpSecret] = useState("");
     const [totpURI, setTotpURI] = useState("");
     const [totpCode, setTotpCode] = useState("");
+
 
     // Mutations
     const triggerTestMutation = useMutation({
@@ -53,23 +50,35 @@ export default function Settings() {
     // Enable TOTP: request secret and QR
     const enableTotpMutation = useMutation({
         mutationFn: async () => {
-            const res = await apiFetch("/api/v1/auth/2fa/enable", {
+            console.log('enableTotpMutation: starting API call');
+            const response = await apiFetch("/api/v1/auth/2fa/enable", {
                 method: "POST",
                 headers: { Authorization: `Bearer ${localStorage.getItem('access_token')}` },
             });
-            if (!res.ok) throw new Error("Failed to enable 2FA");
-            return res.json();
+            console.log('enableTotpMutation: API response received', response);
+            return response;
         },
         onSuccess: (data) => {
+            console.log('enableTotpMutation: onSuccess called with data', data);
             setTotpSecret(data.secret);
             setTotpURI(data.uri);
         },
-        onError: (err) => toast.error(err.message),
+        onError: (err) => {
+            console.error('enableTotpMutation: onError', err);
+            toast.error(err.message);
+        },
     });
+    useEffect(() => {
+        if (enableTotpMutation.data) {
+            console.log('enableTotpMutation.data changed', enableTotpMutation.data);
+            setTotpSecret(enableTotpMutation.data.secret);
+            setTotpURI(enableTotpMutation.data.uri);
+        }
+    }, [enableTotpMutation.data]);
 
-    // Activate TOTP after verifying code
     const activateTotpMutation = useMutation({
         mutationFn: async (code: string) => {
+            console.log('activateTotp: sending code', code);
             const res = await apiFetch("/api/v1/auth/2fa/activate", {
                 method: "POST",
                 headers: {
@@ -78,16 +87,22 @@ export default function Settings() {
                 },
                 body: JSON.stringify({ code }),
             });
-            if (!res.ok) throw new Error("Invalid code");
+            console.log('activateTotp: API response', res);
+            return res;
         },
-        onSuccess: () => {
+        onSuccess: (data) => {
+            console.log('activateTotp: onSuccess', data);
             toast.success("2FA enabled successfully");
             setTotpSecret("");
             setTotpURI("");
             setTotpCode("");
-            queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+            console.log('activateTotp: invalidating currentUser query');
+            queryClient.refetchQueries({ queryKey: ['currentUser'] });
         },
-        onError: (err) => toast.error(err.message),
+        onError: (err) => {
+            console.error('activateTotp: onError', err);
+            toast.error(err.message);
+        },
     });
 
     // Disable TOTP
@@ -101,7 +116,7 @@ export default function Settings() {
         },
         onSuccess: () => {
             toast.success("2FA disabled");
-            queryClient.invalidateQueries({ queryKey: ['currentUser'] });
+            queryClient.refetchQueries({ queryKey: ['currentUser'] });
         },
         onError: (err) => toast.error(err.message),
     });
@@ -275,7 +290,6 @@ export default function Settings() {
                                 // 2FA is disabled – show setup flow
                                 <div className="space-y-4">
                                     {!totpSecret ? (
-                                        // Initial state: button to enable
                                         <div className="flex items-center justify-between p-4 border rounded-lg">
                                             <div className="space-y-1">
                                                 <Label className="text-base">Enhance account security</Label>
@@ -284,14 +298,13 @@ export default function Settings() {
                                                 </p>
                                             </div>
                                             <Button
-                                                onClick={() => enableTotpMutation.mutate()}
+                                                onClick={() => {
+                                                    console.log('Enable 2FA button clicked');
+                                                    enableTotpMutation.mutate();
+                                                }}
                                                 disabled={enableTotpMutation.isPending}
                                             >
-                                                {enableTotpMutation.isPending ? (
-                                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                ) : (
-                                                    <Key className="mr-2 h-4 w-4" />
-                                                )}
+                                                {enableTotpMutation.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Key className="mr-2 h-4 w-4" />}
                                                 Enable 2FA
                                             </Button>
                                         </div>

@@ -45,6 +45,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: userData, isError: userError, isSuccess: userSuccess } = useQuery({
         queryKey: ['currentUser'],
         queryFn: async () => {
+            console.log('auth: fetching current user');
             return apiFetch('/api/v1/auth/me', {
                 headers: { Authorization: `Bearer ${token}` },
             }) as Promise<User>;
@@ -53,9 +54,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         retry: false,
     });
 
-    // FIX: handle onSuccess / onError via useEffect instead of query options
     useEffect(() => {
         if (userSuccess && userData) {
+            console.log('auth: setting user from query', userData);
             setUser(userData);
             setIsLoading(false);
         }
@@ -63,6 +64,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     useEffect(() => {
         if (userError) {
+            console.log('auth: user query error', userError);
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
             localStorage.removeItem('auth_provider');
@@ -71,11 +73,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     }, [userError]);
 
-    // FIX: also set isLoading false when there is no token at all
     useEffect(() => {
         if (!token) setIsLoading(false);
     }, [token]);
-
+    const refreshUser = async () => {
+        const data = await apiFetch('/api/v1/auth/me', {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        setUser(data);
+    };
     const loginMutation = useMutation({
         mutationFn: async (credentials: { username: string; password: string }) => {
             return apiFetch('/api/v1/auth/login', {

@@ -1,21 +1,40 @@
-import {useEffect, useState} from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import {useNavigate} from "react-router-dom";
+import { useNavigate, useSearchParams } from 'react-router-dom';
+
 export default function LoginPage() {
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const urlTempToken = searchParams.get('temp_token');
+
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [tempToken, setTempToken] = useState<string | null>(null);
     const [code, setCode] = useState('');
-    const { login, verify2FA, loginOAuth } = useAuth();
+    const { user, login, verify2FA, loginOAuth } = useAuth();
+
+    // State to track when 2FA verification was just completed
+    const [justVerified, setJustVerified] = useState(false);
+
     useEffect(() => {
         if (!localStorage.getItem('server_url')) {
             navigate('/setup');
         }
-    }, [navigate]);
+        if (urlTempToken) {
+            setTempToken(urlTempToken);
+        }
+    }, [navigate, urlTempToken]);
+
+    // When 2FA verification is done and user becomes available, navigate home
+    useEffect(() => {
+        if (justVerified && user) {
+            navigate('/');
+        }
+    }, [justVerified, user, navigate]);
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
@@ -23,7 +42,7 @@ export default function LoginPage() {
             if (resp['2fa_required']) {
                 setTempToken(resp.temp_token!);
             } else {
-                window.location.href = '/';
+                navigate('/');
             }
         } catch (error) {
             alert('Login failed');
@@ -33,7 +52,7 @@ export default function LoginPage() {
     const handle2FA = async () => {
         try {
             await verify2FA(tempToken!, code);
-            // logged in
+            setJustVerified(true); // Mark as verified; navigation will happen when user is set
         } catch (error) {
             alert('Invalid 2FA code');
         }
