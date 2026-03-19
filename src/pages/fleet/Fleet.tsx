@@ -43,6 +43,7 @@ import type {
 } from "./types"
 import {FleetQuickActionsWidget, UnenrolledCountWidget, UnenrolledListWidget} from "./FleetWidgets.tsx";
 import {useQuery} from "@tanstack/react-query";
+import {apiFetch} from "../../lib/api.ts";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -649,7 +650,7 @@ function ProbeDetailPanel({
     const { data: liveStatus, isLoading: isStatusLoading } = useQuery({
         queryKey: ["probe-live-status", probe.probe_id],
         queryFn: async () => {
-            const res = await fetch(`/api/v1/probes/${probe.probe_id}/status`)
+            const res = await apiFetch(`/api/v1/probes/${probe.probe_id}/status`)
             if (!res.ok) throw new Error("Status not available")
             return res.json()
         },

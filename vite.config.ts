@@ -28,7 +28,7 @@ export default defineConfig({
         navigateFallback: null,
         runtimeCaching: [
           {
-            urlPattern: ({ url }) => url.pathname.startsWith('/api'),
+            urlPattern: ({url}) => url.pathname.startsWith('/api'),
             handler: 'NetworkOnly',
           }
         ]
@@ -42,17 +42,20 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/api': {
-        target: 'https://localhost:9080',
-        changeOrigin: true,
-        secure: false,
-      },
       '/api/v1/ws': {
         target: 'wss://localhost:9080',
         ws: true,
         changeOrigin: true,
         secure: false,
-      }
+      },
+      '/api': {
+        target: 'https://localhost:9080',
+        changeOrigin: true,
+        secure: false,
+      },
     }
-  }
+  },
 })
+
+
+

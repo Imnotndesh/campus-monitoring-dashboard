@@ -23,6 +23,7 @@ import {
     AlertTriangle
 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {apiFetch} from "../../lib/api.ts";
 
 interface Probe {
     probe_id: string
@@ -69,7 +70,7 @@ export function ProbeStatusWidget({
     const { data: status, isLoading, isError } = useQuery<ProbeStatusCache>({
         queryKey: ["widget-probe-status", probeId],
         queryFn: async () => {
-            const res = await fetch(`/api/v1/probes/${probeId}/status`)
+            const res = await apiFetch(`/api/v1/probes/${probeId}/status`)
             if (!res.ok) throw new Error("Failed to fetch status")
             return res.json()
         },
@@ -224,7 +225,7 @@ export function UnknownProbesWidget({
     const { data: probes = [], isLoading, isError } = useQuery<Probe[]>({
         queryKey: ["widget-unknown-probes"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/probes")
+            const res = await apiFetch("/api/v1/probes")
             if (!res.ok) throw new Error("Failed to fetch probes")
             return res.json()
         },
@@ -308,7 +309,7 @@ export function ProbeConfigWidget({
     const { data: probes = [] } = useQuery<Probe[]>({
         queryKey: ["widget-probes-list"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/probes")
+            const res = await apiFetch("/api/v1/probes")
             if (!res.ok) throw new Error("Failed to fetch probes")
             return res.json()
         }
@@ -317,7 +318,7 @@ export function ProbeConfigWidget({
     const { data: config, isLoading: isLoadingConfig, isError } = useQuery<ProbeConfigCache>({
         queryKey: ["widget-probe-config", selectedProbeId],
         queryFn: async () => {
-            const res = await fetch(`/api/v1/probes/${selectedProbeId}/config`)
+            const res = await apiFetch(`/api/v1/probes/${selectedProbeId}/config`)
             if (!res.ok) throw new Error("Failed to fetch config")
             return res.json()
         },

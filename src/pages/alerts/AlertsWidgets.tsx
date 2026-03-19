@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Bell, ShieldAlert, Clock, CheckCircle2, AlertCircle, X, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import {apiFetch} from "../../lib/api.ts";
 
 type Severity = "INFO" | "WARNING" | "CRITICAL"
 type AlertStatus = "ACTIVE" | "ACKNOWLEDGED" | "RESOLVED"
@@ -49,7 +50,7 @@ export function AlertCounterWidget({
     const { data: alerts = [], isLoading, isError } = useQuery<Alert[]>({
         queryKey: ["widget-alerts-counter"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/alerts/active")
+            const res = await apiFetch("/api/v1/alerts/active")
             if (!res.ok) throw new Error("Failed to fetch alerts")
             const data = await res.json()
             return Array.isArray(data) ? data : []
@@ -137,7 +138,7 @@ export function RecentAlertsWidget({
     const { data: alerts = [], isLoading, isError } = useQuery<Alert[]>({
         queryKey: ["widget-alerts-list", limit],
         queryFn: async () => {
-            const res = await fetch("/api/v1/alerts/active")
+            const res = await apiFetch("/api/v1/alerts/active")
             if (!res.ok) throw new Error("Failed to fetch alerts")
             const data = await res.json()
             const alertArray = Array.isArray(data) ? data : []
@@ -150,7 +151,7 @@ export function RecentAlertsWidget({
 
     const acknowledge = async (id: number) => {
         try {
-            const res = await fetch(`/api/v1/alerts/acknowledge/${id}`, { method: "PUT" })
+            const res = await apiFetch(`/api/v1/alerts/acknowledge/${id}`, { method: "PUT" })
             if (!res.ok) throw new Error("Failed to acknowledge")
             queryClient.invalidateQueries({ queryKey: ["widget-alerts-list"] })
             queryClient.invalidateQueries({ queryKey: ["widget-alerts-counter"] })
@@ -265,7 +266,7 @@ export function FilteredAlertsWidget({
     const { data: allAlerts = [], isLoading, isError } = useQuery<Alert[]>({
         queryKey: ["widget-alerts-filtered"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/alerts/active")
+            const res = await apiFetch("/api/v1/alerts/active")
             if (!res.ok) throw new Error("Failed to fetch alerts")
             const data = await res.json()
             return Array.isArray(data) ? data : []
@@ -285,7 +286,7 @@ export function FilteredAlertsWidget({
 
     const acknowledge = async (id: number) => {
         try {
-            const res = await fetch(`/api/v1/alerts/acknowledge/${id}`, { method: "PUT" })
+            const res = await apiFetch(`/api/v1/alerts/acknowledge/${id}`, { method: "PUT" })
             if (!res.ok) throw new Error("Failed to acknowledge")
             queryClient.invalidateQueries({ queryKey: ["widget-alerts-filtered"] })
             queryClient.invalidateQueries({ queryKey: ["widget-alerts-counter"] })

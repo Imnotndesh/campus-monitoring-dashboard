@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import type {FleetStatusResponse, FleetProbe, FleetCommand, FleetGroup, FleetCommandRequest} from "./types"
 import {useState} from "react";
+import {apiFetch} from "../../lib/api.ts";
 
 //  Fleet Overview KPI Widget
 
@@ -22,7 +23,7 @@ export function FleetOverviewWidget() {
     const { data: status, isLoading } = useQuery<FleetStatusResponse>({
         queryKey: ["fleet-status-widget"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/fleet/status")
+            const res = await apiFetch("/api/v1/fleet/status")
             if (!res.ok) throw new Error("Failed to fetch fleet status")
             return res.json()
         },
@@ -81,7 +82,7 @@ export function FleetProbeListWidget({ maxItems = 8 }: { maxItems?: number }) {
     const { data: probes = [], isLoading } = useQuery<FleetProbe[]>({
         queryKey: ["fleet-probes-widget"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/fleet/probes")
+            const res = await apiFetch("/api/v1/fleet/probes")
             if (!res.ok) throw new Error("Failed to fetch fleet probes")
             return res.json()
         },
@@ -155,7 +156,7 @@ export function ActiveRolloutsWidget() {
     const { data: commands = [], isLoading } = useQuery<FleetCommand[]>({
         queryKey: ["fleet-commands-active-widget"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/fleet/commands?status=in_progress&limit=10")
+            const res = await apiFetch("/api/v1/fleet/commands?status=in_progress&limit=10")
             if (!res.ok) throw new Error("Failed to fetch commands")
             return res.json()
         },
@@ -219,7 +220,7 @@ export function FleetGroupsWidget() {
     const { data: probes = [] } = useQuery<FleetProbe[]>({
         queryKey: ["fleet-probes-groups-widget"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/fleet/probes")
+            const res = await apiFetch("/api/v1/fleet/probes")
             if (!res.ok) return []
             return res.json()
         },
@@ -283,7 +284,7 @@ export function OfflineProbesWidget() {
     const { data: probes = [], isLoading } = useQuery<FleetProbe[]>({
         queryKey: ["fleet-probes-offline-widget"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/fleet/probes")
+            const res = await apiFetch("/api/v1/fleet/probes")
             if (!res.ok) return []
             return res.json()
         },
@@ -330,7 +331,7 @@ export function UnenrolledCountWidget() {
     const { data: unenrolled = [], isLoading } = useQuery({
         queryKey: ["fleet-unenrolled-probes"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/fleet/unenrolled-probes")
+            const res = await apiFetch("/api/v1/fleet/unenrolled-probes")
             if (!res.ok) throw new Error("Failed to fetch unenrolled probes")
             return res.json()
         },
@@ -367,7 +368,7 @@ export function UnenrolledListWidget({ onEnrollClick }: { onEnrollClick: (probe:
     const { data: unenrolled = [], isLoading } = useQuery({
         queryKey: ["fleet-unenrolled-probes"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/fleet/unenrolled-probes")
+            const res = await apiFetch("/api/v1/fleet/unenrolled-probes")
             if (!res.ok) throw new Error("Failed to fetch unenrolled probes")
             return res.json()
         },

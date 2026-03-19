@@ -1,46 +1,66 @@
 import {
-    AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-    LineChart, Line, BarChart, Bar, Cell
-} from "recharts"
+    AreaChart,
+    Area,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    LineChart,
+    Line,
+    BarChart,
+    Bar,
+    Cell,
+} from "recharts";
 import {
-    Activity, Calendar, Signal, TrendingDown, Radio, Search, Trash2,
-    Wifi, ArrowDownUp, Loader2, Layers, BarChart3,
-    AlertOctagon, Network, WifiOff
-} from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+    Activity,
+    Calendar,
+    Signal,
+    TrendingDown,
+    Radio,
+    Search,
+    Trash2,
+    Wifi,
+    ArrowDownUp,
+    Loader2,
+    Layers,
+    BarChart3,
+    AlertOctagon,
+    Network,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import type {AnalyticsTimeRange} from "./types"
-import { useAnalyticsViewModel } from "./useAnalyticsViewModel"
-import { KpiCard, NoData, DeepScanVisualizer } from "./components"
+import type { AnalyticsTimeRange } from "./types";
+import { useAnalyticsViewModel } from "./useAnalyticsViewModel";
+import { KpiCard, NoData, DeepScanVisualizer } from "./components";
 
 export default function Analytics() {
-    const vm = useAnalyticsViewModel()
+    const vm = useAnalyticsViewModel();
 
-    // --- Formatting ---
     const fmt = (val: any, unit: string, fixed = 0) =>
-        (val !== null && val !== undefined) ? `${Number(val).toFixed(fixed)}${unit}` : "--"
+        val !== null && val !== undefined ? `${Number(val).toFixed(fixed)}${unit}` : "--";
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-10">
-            {/* Header */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                     <h2 className="text-3xl font-bold tracking-tight">Network Intelligence</h2>
-                    <p className="text-muted-foreground">
-                        Real-time telemetry, spectrum analysis, and network diagnostics
-                    </p>
+                    <p className="text-muted-foreground">Real-time telemetry, spectrum analysis, and network diagnostics</p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Select value={vm.selectedProbe} onValueChange={(val) => {
-                        vm.setSelectedProbe(val)
-                        vm.setSelectedScanId(null)
-                        vm.setComparisonProbes([])
-                    }}>
+                    <Select
+                        value={vm.selectedProbe}
+                        onValueChange={(val) => {
+                            vm.setSelectedProbe(val);
+                            vm.setSelectedScanId(null);
+                            vm.setComparisonProbes([]);
+                        }}
+                    >
                         <SelectTrigger className="w-[200px] bg-background">
                             <SelectValue placeholder="Select Scope" />
                         </SelectTrigger>
@@ -54,14 +74,12 @@ export default function Analytics() {
                         </SelectContent>
                     </Select>
                     <div className="flex bg-muted p-1 rounded-md">
-                        {(['1h', '6h', '24h', '7d'] as AnalyticsTimeRange[]).map((r) => (
+                        {(["1h", "6h", "24h", "7d"] as AnalyticsTimeRange[]).map((r) => (
                             <button
                                 key={r}
                                 onClick={() => vm.setRange(r)}
                                 className={`px-3 py-1 text-xs font-medium rounded-sm transition-all ${
-                                    vm.range === r
-                                        ? "bg-background shadow-sm"
-                                        : "text-muted-foreground hover:text-foreground"
+                                    vm.range === r ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
                                 }`}
                             >
                                 {r.toUpperCase()}
@@ -71,12 +89,15 @@ export default function Analytics() {
                 </div>
             </div>
 
-            {/* KPI Cards */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                 <KpiCard
                     title="Network Stability"
                     value={fmt(vm.normalizedStats?.score, "%")}
-                    desc={vm.selectedProbe === 'all' ? 'Health Score' : `Score (${vm.normalizedStats?.sampleCount || 0} samples)`}
+                    desc={
+                        vm.selectedProbe === "all"
+                            ? "Health Score"
+                            : `Score (${vm.normalizedStats?.sampleCount || 0} samples)`
+                    }
                     icon={<Activity className="h-4 w-4 text-emerald-500" />}
                 />
                 <KpiCard
@@ -94,9 +115,11 @@ export default function Analytics() {
                 <KpiCard
                     title="Packet Loss"
                     value={fmt(vm.normalizedStats?.loss, "%", 2)}
-                    desc={vm.selectedProbe === 'all' && vm.normalizedStats?.activeProbes
-                        ? `${vm.normalizedStats.activeProbes}/${vm.normalizedStats.totalProbes} Active`
-                        : 'Drop Rate'}
+                    desc={
+                        vm.selectedProbe === "all" && vm.normalizedStats?.activeProbes
+                            ? `${vm.normalizedStats.activeProbes}/${vm.normalizedStats.totalProbes} Active`
+                            : "Drop Rate"
+                    }
                     icon={<TrendingDown className="h-4 w-4 text-amber-500" />}
                 />
             </div>
@@ -104,13 +127,12 @@ export default function Analytics() {
             <Tabs defaultValue="overview" className="space-y-4">
                 <TabsList>
                     <TabsTrigger value="overview">Overview</TabsTrigger>
-                    {vm.selectedProbe === 'all' && <TabsTrigger value="spectrum">Spectrum & APs</TabsTrigger>}
-                    {vm.selectedProbe !== 'all' && <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>}
-                    {vm.selectedProbe !== 'all' && <TabsTrigger value="deepscan">Deep Scan</TabsTrigger>}
-                    {vm.selectedProbe === 'all' && <TabsTrigger value="comparison">Compare Probes</TabsTrigger>}
+                    {vm.selectedProbe === "all" && <TabsTrigger value="spectrum">Spectrum & APs</TabsTrigger>}
+                    {vm.selectedProbe !== "all" && <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>}
+                    {vm.selectedProbe !== "all" && <TabsTrigger value="deepscan">Deep Scan</TabsTrigger>}
+                    {vm.selectedProbe === "all" && <TabsTrigger value="comparison">Compare Probes</TabsTrigger>}
                 </TabsList>
 
-                {/* TAB: OVERVIEW */}
                 <TabsContent value="overview" className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
                         <Card className="col-span-4">
@@ -131,10 +153,7 @@ export default function Analytics() {
                                             <XAxis
                                                 dataKey="timestamp"
                                                 tickFormatter={(t) =>
-                                                    new Date(t).toLocaleTimeString([], {
-                                                        hour: '2-digit',
-                                                        minute: '2-digit'
-                                                    })
+                                                    new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
                                                 }
                                                 minTickGap={30}
                                                 fontSize={10}
@@ -142,7 +161,7 @@ export default function Analytics() {
                                             <YAxis fontSize={12} />
                                             <Tooltip
                                                 labelFormatter={(t) => new Date(t).toLocaleString()}
-                                                contentStyle={{ backgroundColor: 'hsl(var(--card))' }}
+                                                contentStyle={{ backgroundColor: "hsl(var(--card))" }}
                                             />
                                             <Area
                                                 type="monotone"
@@ -171,7 +190,7 @@ export default function Analytics() {
                                             <YAxis domain={[-95, -30]} fontSize={12} />
                                             <Tooltip
                                                 labelFormatter={(t) => new Date(t).toLocaleString()}
-                                                contentStyle={{ backgroundColor: 'hsl(var(--card))' }}
+                                                contentStyle={{ backgroundColor: "hsl(var(--card))" }}
                                             />
                                             <Line
                                                 type="monotone"
@@ -191,7 +210,6 @@ export default function Analytics() {
                     </div>
                 </TabsContent>
 
-                {/* TAB: SPECTRUM & APs */}
                 <TabsContent value="spectrum" className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">
                         <Card>
@@ -207,15 +225,12 @@ export default function Analytics() {
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                             <XAxis dataKey="channel" />
                                             <YAxis allowDecimals={false} />
-                                            <Tooltip
-                                                cursor={{ fill: 'transparent' }}
-                                                contentStyle={{ backgroundColor: 'hsl(var(--card))' }}
-                                            />
+                                            <Tooltip cursor={{ fill: "transparent" }} contentStyle={{ backgroundColor: "hsl(var(--card))" }} />
                                             <Bar dataKey="count" fill="#8884d8" radius={[4, 4, 0, 0]}>
                                                 {vm.channels.map((entry, index) => (
                                                     <Cell
                                                         key={`cell-${index}`}
-                                                        fill={entry.count > 5 ? '#ef4444' : '#3b82f6'}
+                                                        fill={entry.count > 5 ? "#ef4444" : "#3b82f6"}
                                                     />
                                                 ))}
                                             </Bar>
@@ -227,7 +242,6 @@ export default function Analytics() {
                             </CardContent>
                         </Card>
 
-                        {/* Congestion Analysis List */}
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
@@ -238,29 +252,22 @@ export default function Analytics() {
                                 {vm.congestion.length > 0 ? (
                                     <ScrollArea className="h-[300px]">
                                         <div className="space-y-1">
-                                            {/* Table Header */}
                                             <div className="grid grid-cols-4 text-xs font-semibold text-muted-foreground px-4 py-2 border-b">
                                                 <div>Time</div>
                                                 <div className="text-center">Neighbors</div>
                                                 <div className="text-center">Overlap</div>
                                                 <div className="text-right">Congested Probes</div>
                                             </div>
-
-                                            {/* Data Rows */}
                                             {vm.congestion.map((c, i) => (
                                                 <div
                                                     key={i}
                                                     className="grid grid-cols-4 items-center px-4 py-3 border-b last:border-0 hover:bg-muted/50 text-sm"
                                                 >
                                                     <div className="font-mono text-xs text-muted-foreground">
-                                                        {new Date(c.hour).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                        {new Date(c.hour).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                                                     </div>
-                                                    <div className="text-center font-bold">
-                                                        {Math.round(c.avg_neighbors)}
-                                                    </div>
-                                                    <div className="text-center font-bold">
-                                                        {Math.round(c.avg_overlap)}
-                                                    </div>
+                                                    <div className="text-center font-bold">{Math.round(c.avg_neighbors)}</div>
+                                                    <div className="text-center font-bold">{Math.round(c.avg_overlap)}</div>
                                                     <div className="text-right">
                                                         {c.congested_probes > 0 ? (
                                                             <Badge variant="destructive" className="h-5 px-1.5">
@@ -281,7 +288,6 @@ export default function Analytics() {
                         </Card>
                     </div>
 
-                    {/* Access Points Table */}
                     <Card>
                         <CardHeader>
                             <CardTitle className="flex items-center gap-2">
@@ -308,15 +314,11 @@ export default function Analytics() {
                                                 <div className="flex gap-4 text-right">
                                                     <div>
                                                         <div className="text-xs text-muted-foreground">RSSI</div>
-                                                        <div className="font-semibold">
-                                                            {ap.avg_rssi?.toFixed(0) ?? '--'} dBm
-                                                        </div>
+                                                        <div className="font-semibold">{ap.avg_rssi?.toFixed(0) ?? "--"} dBm</div>
                                                     </div>
                                                     <div>
                                                         <div className="text-xs text-muted-foreground">Latency</div>
-                                                        <div className="font-semibold">
-                                                            {fmt(vm.normalizedStats?.latency, " ms")}
-                                                        </div>
+                                                        <div className="font-semibold">{fmt(vm.normalizedStats?.latency, " ms")}</div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -330,10 +332,8 @@ export default function Analytics() {
                     </Card>
                 </TabsContent>
 
-                {/* TAB: DIAGNOSTICS */}
                 <TabsContent value="diagnostics" className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">
-                        {/* Anomalies */}
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
@@ -344,15 +344,8 @@ export default function Analytics() {
                                 <ScrollArea className="h-[300px]">
                                     {vm.anomalies.length > 0 ? (
                                         vm.anomalies.map((a, i) => (
-                                            <div
-                                                key={i}
-                                                className="flex items-start gap-3 mb-4 border-b pb-3 last:border-0"
-                                            >
-                                                <Badge
-                                                    variant={
-                                                        a.severity === 'critical' ? 'destructive' : 'outline'
-                                                    }
-                                                >
+                                            <div key={i} className="flex items-start gap-3 mb-4 border-b pb-3 last:border-0">
+                                                <Badge variant={a.severity === "critical" ? "destructive" : "outline"}>
                                                     {a.severity}
                                                 </Badge>
                                                 <div className="flex-1">
@@ -373,7 +366,6 @@ export default function Analytics() {
                             </CardContent>
                         </Card>
 
-                        {/* Roaming / Connection History Card */}
                         <Card>
                             <CardHeader>
                                 <CardTitle className="flex items-center gap-2">
@@ -387,14 +379,12 @@ export default function Analytics() {
                                             <span className="text-muted-foreground">Unique APs Seen:</span>
                                             <span className="font-semibold">{vm.roaming.length}</span>
                                         </div>
-
                                         <ScrollArea className="h-[220px]">
                                             {vm.roaming.map((session, i) => (
                                                 <div
                                                     key={i}
                                                     className="p-3 border rounded mb-2 text-xs space-y-2 hover:bg-muted/50 transition-colors"
                                                 >
-                                                    {/* Header: BSSID & Channel */}
                                                     <div className="flex items-center justify-between">
                                                         <div className="flex items-center gap-2">
                                                             <Wifi className="h-3 w-3 text-primary" />
@@ -404,8 +394,6 @@ export default function Analytics() {
                                                             CH {session.channel}
                                                         </Badge>
                                                     </div>
-
-                                                    {/* Metrics: Signal & Time */}
                                                     <div className="grid grid-cols-2 gap-2 text-muted-foreground">
                                                         <div>
                                                             <span className="block text-[10px] uppercase opacity-70">Avg Signal</span>
@@ -420,13 +408,20 @@ export default function Analytics() {
                                                             </span>
                                                         </div>
                                                     </div>
-
                                                     <div className="pt-2 border-t mt-1 flex justify-between text-[10px] text-muted-foreground">
                                                         <span>
-                                                            First: {new Date(session.first_seen).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                            First:{" "}
+                                                            {new Date(session.first_seen).toLocaleTimeString([], {
+                                                                hour: "2-digit",
+                                                                minute: "2-digit",
+                                                            })}
                                                         </span>
                                                         <span>
-                                                            Last: {new Date(session.last_seen).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                                            Last:{" "}
+                                                            {new Date(session.last_seen).toLocaleTimeString([], {
+                                                                hour: "2-digit",
+                                                                minute: "2-digit",
+                                                            })}
                                                         </span>
                                                     </div>
                                                 </div>
@@ -441,7 +436,6 @@ export default function Analytics() {
                     </div>
                 </TabsContent>
 
-                {/* TAB: DEEP SCAN */}
                 <TabsContent value="deepscan" className="space-y-4">
                     <div className="flex items-center justify-between bg-muted/30 p-4 rounded-lg border">
                         <div>
@@ -452,10 +446,7 @@ export default function Analytics() {
                                 Trigger on-demand packet analysis for {vm.selectedProbe}
                             </p>
                         </div>
-                        <Button
-                            onClick={() => vm.triggerScan()}
-                            disabled={vm.isTriggeringScan}
-                        >
+                        <Button onClick={() => vm.triggerScan()} disabled={vm.isTriggeringScan}>
                             {vm.isTriggeringScan ? (
                                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             ) : (
@@ -476,8 +467,7 @@ export default function Analytics() {
                                         <div
                                             key={scan.id}
                                             onClick={() => vm.setSelectedScanId(scan.id)}
-                                            className={`p-3 border-b cursor-pointer transition-all text-sm flex justify-between items-center group
-                                                ${
+                                            className={`p-3 border-b cursor-pointer transition-all text-sm flex justify-between items-center group ${
                                                 vm.selectedScanId === scan.id ||
                                                 (!vm.selectedScanId && vm.activeScan?.id === scan.id)
                                                     ? "bg-primary/5 border-l-4 border-l-primary"
@@ -487,21 +477,16 @@ export default function Analytics() {
                                             <div>
                                                 <div className="flex items-center gap-2 mb-1">
                                                     <span className="font-semibold">#{scan.id}</span>
-                                                    {scan.status === 'processing' || scan.status === 'pending' ? (
+                                                    {scan.status === "processing" || scan.status === "pending" ? (
                                                         <Badge
                                                             variant="secondary"
                                                             className="text-[10px] h-5 animate-pulse text-blue-500"
                                                         >
-                                                            <Loader2 className="h-3 w-3 mr-1 animate-spin" />{' '}
-                                                            Running
+                                                            <Loader2 className="h-3 w-3 mr-1 animate-spin" /> Running
                                                         </Badge>
                                                     ) : (
                                                         <Badge
-                                                            variant={
-                                                                scan.status === 'completed'
-                                                                    ? 'default'
-                                                                    : 'outline'
-                                                            }
+                                                            variant={scan.status === "completed" ? "default" : "outline"}
                                                             className="text-[10px] h-5"
                                                         >
                                                             {scan.status}
@@ -517,9 +502,9 @@ export default function Analytics() {
                                                 size="icon"
                                                 className="h-7 w-7 opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10"
                                                 onClick={(e) => {
-                                                    e.stopPropagation()
+                                                    e.stopPropagation();
                                                     if (confirm("Delete this scan?")) {
-                                                        vm.deleteScan(scan.id)
+                                                        vm.deleteScan(scan.id);
                                                     }
                                                 }}
                                             >
@@ -528,9 +513,7 @@ export default function Analytics() {
                                         </div>
                                     ))}
                                     {vm.scans.length === 0 && (
-                                        <div className="p-8 text-center text-muted-foreground text-sm">
-                                            No scans recorded
-                                        </div>
+                                        <div className="p-8 text-center text-muted-foreground text-sm">No scans recorded</div>
                                     )}
                                 </ScrollArea>
                             </CardContent>
@@ -538,7 +521,7 @@ export default function Analytics() {
 
                         <Card className="md:col-span-2 flex flex-col overflow-hidden border-t-4 border-t-primary/20">
                             {vm.activeScan ? (
-                                vm.activeScan.status === 'processing' || vm.activeScan.status === 'pending' ? (
+                                vm.activeScan.status === "processing" || vm.activeScan.status === "pending" ? (
                                     <div className="flex flex-col items-center justify-center h-full text-muted-foreground gap-4 bg-muted/10">
                                         <Loader2 className="h-12 w-12 animate-spin text-primary" />
                                         <p>Analysis in Progress...</p>
@@ -556,25 +539,24 @@ export default function Analytics() {
                     </div>
                 </TabsContent>
 
-                {/* TAB: COMPARISON */}
                 <TabsContent value="comparison" className="space-y-4">
                     <Card>
                         <CardHeader>
                             <CardTitle>Compare Probes</CardTitle>
                             <div className="flex gap-2 flex-wrap mt-2">
-                                {vm.probes.slice(0, 6).map(p => (
+                                {vm.probes.slice(0, 6).map((p) => (
                                     <Button
                                         key={p.probe_id}
                                         size="sm"
                                         variant={vm.comparisonProbes.includes(p.probe_id) ? "default" : "outline"}
                                         onClick={() => {
-                                            vm.setComparisonProbes(prev =>
+                                            vm.setComparisonProbes((prev) =>
                                                 prev.includes(p.probe_id)
-                                                    ? prev.filter(id => id !== p.probe_id)
+                                                    ? prev.filter((id) => id !== p.probe_id)
                                                     : prev.length < 4
                                                         ? [...prev, p.probe_id]
                                                         : prev
-                                            )
+                                            );
                                         }}
                                     >
                                         {p.probe_id}
@@ -592,19 +574,19 @@ export default function Analytics() {
                                                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
                                                     <div>
                                                         <span className="text-muted-foreground">Avg RSSI:</span>
-                                                        <div className="font-semibold">{probe.avg_rssi?.toFixed(0) || '--'} dBm</div>
+                                                        <div className="font-semibold">{probe.avg_rssi?.toFixed(0) || "--"} dBm</div>
                                                     </div>
                                                     <div>
                                                         <span className="text-muted-foreground">Avg Latency:</span>
-                                                        <div className="font-semibold">{probe.avg_latency?.toFixed(1) || '--'} ms</div>
+                                                        <div className="font-semibold">{probe.avg_latency?.toFixed(1) || "--"} ms</div>
                                                     </div>
                                                     <div>
                                                         <span className="text-muted-foreground">Packet Loss:</span>
-                                                        <div className="font-semibold">{probe.avg_packet_loss?.toFixed(2) || '--'}%</div>
+                                                        <div className="font-semibold">{probe.avg_packet_loss?.toFixed(2) || "--"}%</div>
                                                     </div>
                                                     <div>
                                                         <span className="text-muted-foreground">Stability:</span>
-                                                        <div className="font-semibold">{probe.stability_score?.toFixed(0) || '--'}%</div>
+                                                        <div className="font-semibold">{probe.stability_score?.toFixed(0) || "--"}%</div>
                                                     </div>
                                                 </div>
                                             </div>
@@ -621,5 +603,5 @@ export default function Analytics() {
                 </TabsContent>
             </Tabs>
         </div>
-    )
+    );
 }
