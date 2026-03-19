@@ -14,10 +14,8 @@ export default function LoginPage() {
     const [password, setPassword] = useState('');
     const [tempToken, setTempToken] = useState<string | null>(null);
     const [code, setCode] = useState('');
+    const [loginSuccess, setLoginSuccess] = useState(false);
     const { user, login, verify2FA, loginOAuth } = useAuth();
-
-    // State to track when 2FA verification was just completed
-    const [justVerified, setJustVerified] = useState(false);
 
     useEffect(() => {
         if (!localStorage.getItem('server_url')) {
@@ -27,13 +25,16 @@ export default function LoginPage() {
             setTempToken(urlTempToken);
         }
     }, [navigate, urlTempToken]);
-
-    // When 2FA verification is done and user becomes available, navigate home
     useEffect(() => {
-        if (justVerified && user) {
+        if (loginSuccess && user) {
             navigate('/');
         }
-    }, [justVerified, user, navigate]);
+    }, [loginSuccess, user, navigate]);
+    useEffect(() => {
+        if (tempToken === null && user) {
+            navigate('/');
+        }
+    }, [tempToken, user, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -42,7 +43,7 @@ export default function LoginPage() {
             if (resp['2fa_required']) {
                 setTempToken(resp.temp_token!);
             } else {
-                navigate('/');
+                setLoginSuccess(true);
             }
         } catch (error) {
             alert('Login failed');
@@ -52,7 +53,7 @@ export default function LoginPage() {
     const handle2FA = async () => {
         try {
             await verify2FA(tempToken!, code);
-            setJustVerified(true); // Mark as verified; navigation will happen when user is set
+            setTempToken(null);
         } catch (error) {
             alert('Invalid 2FA code');
         }

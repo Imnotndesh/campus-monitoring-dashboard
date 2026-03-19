@@ -46,9 +46,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         queryKey: ['currentUser'],
         queryFn: async () => {
             console.log('auth: fetching current user');
-            return apiFetch('/api/v1/auth/me', {
+            const data = await apiFetch('/api/v1/auth/me', {
                 headers: { Authorization: `Bearer ${token}` },
-            }) as Promise<User>;
+            }) as any;
+            return {
+                id: data.id,
+                username: data.username,
+                email: data.email,
+                role: data.role,
+                twoFAEnabled: data['2fa_enabled'] || false,
+            } as User;
         },
         enabled: !!token,
         retry: false,
