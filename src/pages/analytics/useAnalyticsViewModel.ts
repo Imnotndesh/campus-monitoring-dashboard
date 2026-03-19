@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react"
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
-import { toast } from "sonner"
+import { useState, useMemo } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import type {
     AnalyticsTimeRange,
     Probe,
@@ -13,251 +13,254 @@ import type {
     Anomaly,
     Command,
     RoamingSession,
-} from "./types"
+} from "./types";
+import { apiFetch } from "../../lib/api";
 
 export function useAnalyticsViewModel() {
-    const queryClient = useQueryClient()
-    const [selectedProbe, setSelectedProbe] = useState<string>("all")
-    const [range, setRange] = useState<AnalyticsTimeRange>("24h")
-    const [selectedScanId, setSelectedScanId] = useState<number | null>(null)
-    const [comparisonProbes, setComparisonProbes] = useState<string[]>([])
+    const queryClient = useQueryClient();
+    const [selectedProbe, setSelectedProbe] = useState<string>("all");
+    const [range, setRange] = useState<AnalyticsTimeRange>("24h");
+    const [selectedScanId, setSelectedScanId] = useState<number | null>(null);
+    const [comparisonProbes, setComparisonProbes] = useState<string[]>([]);
 
-    // --- Helper: Date Ranges & Hours ---
-    const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 }
-    const hours = rangeToHours[range]
+    const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 };
+    const hours = rangeToHours[range];
 
     const getDateRange = () => {
-        const end = new Date()
-        const start = new Date()
-        start.setHours(end.getHours() - hours)
-        return { start: start.toISOString(), end: end.toISOString() }
-    }
+        const end = new Date();
+        const start = new Date();
+        start.setHours(end.getHours() - hours);
+        return { start: start.toISOString(), end: end.toISOString() };
+    };
 
     const getInterval = () => {
-        if (range === '1h') return '1 minute'
-        if (range === '6h') return '5 minutes'
-        if (range === '24h') return '1 hour'
-        return '6 hours'
-    }
+        if (range === "1h") return "1 minute";
+        if (range === "6h") return "5 minutes";
+        if (range === "24h") return "1 hour";
+        return "6 hours";
+    };
 
-    // --- 1. Fetch Probes ---
+    // 1. Probes
     const { data: probes = [] } = useQuery<Probe[]>({
         queryKey: ["probes"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/probes")
-            if (!res.ok) throw new Error("Failed to fetch probes")
-            return res.json()
-        }
-    })
+            try {
+                return await apiFetch("/api/v1/probes");
+            } catch {
+                return [];
+            }
+        },
+    });
 
-    // --- 2. Fetch TimeSeries (RSSI & Latency) ---
+    // 2. TimeSeries
     const { data: chartData = [] } = useQuery({
         queryKey: ["chartData", range, selectedProbe],
         queryFn: async () => {
-            const { start, end } = getDateRange()
-            const interval = getInterval()
+            const { start, end } = getDateRange();
+            const interval = getInterval();
             const params = new URLSearchParams({
                 start_time: start,
                 end_time: end,
-                interval
-            })
+                interval,
+            });
 
-            if (selectedProbe !== 'all') {
-                params.append("probe_id", selectedProbe)
+            if (selectedProbe !== "all") {
+                params.append("probe_id", selectedProbe);
             }
 
-            const [rssiRes, latencyRes] = await Promise.all([
-                fetch(`/api/v1/analytics/timeseries/rssi?${params}`),
-                fetch(`/api/v1/analytics/timeseries/latency?${params}`)
-            ])
+            const [rssiData, latencyData] = await Promise.all([
+                apiFetch(`/api/v1/analytics/timeseries/rssi?${params}`).catch(() => [] as TimeSeriesPoint[]),
+                apiFetch(`/api/v1/analytics/timeseries/latency?${params}`).catch(() => [] as TimeSeriesPoint[]),
+            ]);
 
-            const rssiData: TimeSeriesPoint[] = rssiRes.ok ? await rssiRes.json() : []
-            const latencyData: TimeSeriesPoint[] = latencyRes.ok ? await latencyRes.json() : []
+            const dataMap = new Map<string, { timestamp: string; rssi: number | null; latency: number | null }>();
 
-            // Merge by timestamp
-            const dataMap = new Map<string, { timestamp: string, rssi: number | null, latency: number | null }>()
+            rssiData.forEach((p: TimeSeriesPoint) => {
+                const existing = dataMap.get(p.timestamp) || { timestamp: p.timestamp, rssi: null, latency: null };
+                existing.rssi = p.value;
+                dataMap.set(p.timestamp, existing);
+            });
 
-            rssiData.forEach(p => {
-                const existing = dataMap.get(p.timestamp) || { timestamp: p.timestamp, rssi: null, latency: null }
-                existing.rssi = p.value
-                dataMap.set(p.timestamp, existing)
-            })
+            latencyData.forEach((p: TimeSeriesPoint) => {
+                const existing = dataMap.get(p.timestamp) || { timestamp: p.timestamp, rssi: null, latency: null };
+                existing.latency = p.value;
+                dataMap.set(p.timestamp, existing);
+            });
 
-            latencyData.forEach(p => {
-                const existing = dataMap.get(p.timestamp) || { timestamp: p.timestamp, rssi: null, latency: null }
-                existing.latency = p.value
-                dataMap.set(p.timestamp, existing)
-            })
+            return Array.from(dataMap.values()).sort(
+                (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+            );
+        },
+    });
 
-            return Array.from(dataMap.values()).sort((a, b) =>
-                new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-            )
-        }
-    })
-
-    // --- 3. Network Health or Performance Stats ---
+    // 3. Stats
     const { data: stats } = useQuery<NetworkHealth | PerformanceMetrics>({
         queryKey: ["stats", range, selectedProbe],
         queryFn: async () => {
-            if (selectedProbe === 'all') {
-                const res = await fetch("/api/v1/analytics/health")
-                if (!res.ok) throw new Error("Failed to fetch health")
-                return res.json()
+            if (selectedProbe === "all") {
+                return await apiFetch("/api/v1/analytics/health");
             } else {
-                const { start, end } = getDateRange()
-                const params = new URLSearchParams({ start_time: start, end_time: end })
-                const res = await fetch(`/api/v1/analytics/performance/${selectedProbe}?${params}`)
-                if (!res.ok) throw new Error("Failed to fetch performance")
-                return res.json()
+                const { start, end } = getDateRange();
+                const params = new URLSearchParams({ start_time: start, end_time: end });
+                return await apiFetch(`/api/v1/analytics/performance/${selectedProbe}?${params}`);
             }
-        }
-    })
+        },
+    });
 
-    // --- 4. Channel Distribution ---
+    // 4. Channels
     const { data: channels = [] } = useQuery<ChannelData[]>({
         queryKey: ["channels", range],
         queryFn: async () => {
-            const { start, end } = getDateRange()
-            const params = new URLSearchParams({ start_time: start, end_time: end })
-            const res = await fetch(`/api/v1/analytics/channels?${params}`)
-            if (!res.ok) return []
-            return res.json()
+            const { start, end } = getDateRange();
+            const params = new URLSearchParams({ start_time: start, end_time: end });
+            try {
+                return await apiFetch(`/api/v1/analytics/channels?${params}`);
+            } catch {
+                return [];
+            }
         },
-        enabled: selectedProbe === 'all'
-    })
+        enabled: selectedProbe === "all",
+    });
 
-    // --- 5. Access Point Analysis ---
+    // 5. APs
     const { data: apData = [] } = useQuery<APStats[]>({
         queryKey: ["aps", hours],
         queryFn: async () => {
-            const res = await fetch(`/api/v1/analytics/aps?hours=${hours}`)
-            if (!res.ok) return []
-            return res.json()
+            try {
+                return await apiFetch(`/api/v1/analytics/aps?hours=${hours}`);
+            } catch {
+                return [];
+            }
         },
-        enabled: selectedProbe === 'all'
-    })
+        enabled: selectedProbe === "all",
+    });
 
-    // --- 6. Congestion Analysis ---
+    // 6. Congestion
     const { data: congestion = [] } = useQuery<CongestionData[]>({
         queryKey: ["congestion", hours],
         queryFn: async () => {
-            const res = await fetch(`/api/v1/analytics/congestion?hours=${hours}`)
-            if (!res.ok) return []
-            return res.json()
+            try {
+                return await apiFetch(`/api/v1/analytics/congestion?hours=${hours}`);
+            } catch {
+                return [];
+            }
         },
-        enabled: selectedProbe === 'all'
-    })
+        enabled: selectedProbe === "all",
+    });
 
-    // --- 7. Anomalies ---
+    // 7. Anomalies
     const { data: anomalies = [] } = useQuery<Anomaly[]>({
         queryKey: ["anomalies", selectedProbe, hours],
         queryFn: async () => {
-            if (selectedProbe === 'all') return []
-            const res = await fetch(`/api/v1/analytics/anomalies/${selectedProbe}?hours=${hours}`)
-            if (!res.ok) return []
-            return res.json()
+            if (selectedProbe === "all") return [];
+            try {
+                return await apiFetch(`/api/v1/analytics/anomalies/${selectedProbe}?hours=${hours}`);
+            } catch {
+                return [];
+            }
         },
-        enabled: selectedProbe !== 'all'
-    })
+        enabled: selectedProbe !== "all",
+    });
 
-    // --- 8. Roaming Analysis ---
+    // 8. Roaming
     const { data: roaming = [] } = useQuery<RoamingSession[]>({
         queryKey: ["roaming", selectedProbe, hours],
         queryFn: async () => {
-            if (selectedProbe === 'all') return []
-            const res = await fetch(`/api/v1/analytics/roaming/${selectedProbe}?hours=${hours}`)
-            if (!res.ok) return []
-            return res.json()
+            if (selectedProbe === "all") return [];
+            try {
+                return await apiFetch(`/api/v1/analytics/roaming/${selectedProbe}?hours=${hours}`);
+            } catch {
+                return [];
+            }
         },
-        enabled: selectedProbe !== 'all'
-    })
+        enabled: selectedProbe !== "all",
+    });
 
-    // --- 9. Probe Comparison ---
+    // 9. Comparison
     const { data: comparison } = useQuery({
         queryKey: ["comparison", comparisonProbes, hours],
         queryFn: async () => {
-            if (comparisonProbes.length < 2) return null
-            const params = new URLSearchParams({ hours: hours.toString() })
-            comparisonProbes.forEach(p => params.append("probe_ids", p))
-            const res = await fetch(`/api/v1/analytics/comparison?${params}`)
-            if (!res.ok) return null
-            return res.json()
+            if (comparisonProbes.length < 2) return null;
+            const params = new URLSearchParams({ hours: hours.toString() });
+            comparisonProbes.forEach((p) => params.append("probe_ids", p));
+            try {
+                return await apiFetch(`/api/v1/analytics/comparison?${params}`);
+            } catch {
+                return null;
+            }
         },
-        enabled: comparisonProbes.length >= 2
-    })
+        enabled: comparisonProbes.length >= 2,
+    });
 
-    // --- 10. Deep Scans ---
+    // 10. Deep scans
     const { data: scans = [] } = useQuery<Command[]>({
         queryKey: ["deep_scans", selectedProbe],
         queryFn: async () => {
-            if (selectedProbe === "all") return []
-            const res = await fetch(`/api/v1/commands/probe/${selectedProbe}?limit=50`)
-
-            if (!res.ok) return []
-
-            const raw = await res.json()
-            const cmds = Array.isArray(raw) ? raw : []
-
-            return cmds
-                .filter((c: any) => c.command_type === 'deep_scan')
-                .sort((a: Command, b: Command) =>
-                    new Date(b.issued_at).getTime() - new Date(a.issued_at).getTime()
-                )
+            if (selectedProbe === "all") return [];
+            try {
+                const data = await apiFetch(`/api/v1/commands/probe/${selectedProbe}?limit=50`);
+                const cmds = Array.isArray(data) ? data : [];
+                return cmds
+                    .filter((c: any) => c.command_type === "deep_scan")
+                    .sort((a: Command, b: Command) => new Date(b.issued_at).getTime() - new Date(a.issued_at).getTime());
+            } catch {
+                return [];
+            }
         },
         enabled: selectedProbe !== "all",
-        refetchInterval: 5000
-    })
+        refetchInterval: 5000,
+    });
 
-    // --- Mutations ---
+    // Mutations
     const triggerScanMutation = useMutation({
         mutationFn: async () => {
-            const res = await fetch(`/api/v1/probes/${selectedProbe}/command`, {
+            return await apiFetch(`/api/v1/probes/${selectedProbe}/command`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ command: 'deep_scan', params: {} })
-            })
-            if (!res.ok) throw new Error("Failed to trigger scan")
-            return res.json()
+                body: JSON.stringify({
+                    command_type: 'deep_scan',
+                    payload: {}
+                })
+            });
         },
         onSuccess: () => {
-            toast.success("Deep Scan Initiated")
-            queryClient.invalidateQueries({ queryKey: ["deep_scans"] })
+            toast.success("Deep Scan Initiated");
+            queryClient.invalidateQueries({ queryKey: ["deep_scans"] });
         },
         onError: () => {
-            toast.error("Failed to start scan")
+            toast.error("Failed to start scan");
         }
-    })
+    });
 
     const deleteScanMutation = useMutation({
         mutationFn: async (id: number) => {
-            const res = await fetch(`/api/v1/commands/${id}`, { method: 'DELETE' })
-            if (!res.ok) throw new Error("Failed to delete")
+            await apiFetch(`/api/v1/commands/${id}`, { method: "DELETE" });
         },
         onSuccess: (_, deletedId) => {
-            toast.success("Scan deleted")
-            if (selectedScanId === deletedId) setSelectedScanId(null)
-            queryClient.invalidateQueries({ queryKey: ["deep_scans"] })
-        }
-    })
+            toast.success("Scan deleted");
+            if (selectedScanId === deletedId) setSelectedScanId(null);
+            queryClient.invalidateQueries({ queryKey: ["deep_scans"] });
+        },
+    });
 
-    // --- Computed Values ---
+    // Computed stats
     const normalizedStats = useMemo(() => {
-        if (!stats) return null
+        if (!stats) return null;
 
         const getVal = (keys: string[]) => {
             for (const k of keys) {
                 if ((stats as any)[k] !== undefined && (stats as any)[k] !== null) {
-                    return (stats as any)[k]
+                    return (stats as any)[k];
                 }
             }
-            return null
-        }
+            return null;
+        };
 
-        const rssi = getVal(['avg_rssi', 'rssi'])
-        const latency = getVal(['avg_latency', 'latency'])
-        const loss = getVal(['avg_packet_loss', 'packet_loss'])
-        const score = getVal(['health_score', 'stability_score'])
-        const validRssi = (rssi && rssi < 0) ? rssi : null
+        const rssi = getVal(["avg_rssi", "rssi"]);
+        const latency = getVal(["avg_latency", "latency"]);
+        const loss = getVal(["avg_packet_loss", "packet_loss"]);
+        const score = getVal(["health_score", "stability_score"]);
+        const validRssi = rssi && rssi < 0 ? rssi : null;
 
         return {
             rssi: validRssi,
@@ -266,11 +269,11 @@ export function useAnalyticsViewModel() {
             score: score || 0,
             activeProbes: (stats as NetworkHealth).active_probes,
             totalProbes: (stats as NetworkHealth).total_probes,
-            sampleCount: (stats as PerformanceMetrics).sample_count
-        }
-    }, [stats])
+            sampleCount: (stats as PerformanceMetrics).sample_count,
+        };
+    }, [stats]);
 
-    const activeScan = scans.find(s => s.id === selectedScanId) || scans[0] || null
+    const activeScan = scans.find((s) => s.id === selectedScanId) || scans[0] || null;
 
     return {
         selectedProbe,
@@ -294,6 +297,6 @@ export function useAnalyticsViewModel() {
         activeScan,
         triggerScan: triggerScanMutation.mutate,
         isTriggeringScan: triggerScanMutation.isPending,
-        deleteScan: deleteScanMutation.mutate
-    }
+        deleteScan: deleteScanMutation.mutate,
+    };
 }

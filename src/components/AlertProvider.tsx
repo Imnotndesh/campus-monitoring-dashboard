@@ -12,7 +12,19 @@ export const AlertProvider = ({ children }: { children: React.ReactNode }) => {
     const queryClient = useQueryClient();
     const [unreadCount, setUnreadCount] = useState(0);
     const [status, setStatus] = useState("connecting");
+    useEffect(() => {
+        const baseUrl = localStorage.getItem('server_url') || '';
+        const wsBase = baseUrl.replace(/^http/, 'ws');
+        const token = localStorage.getItem('access_token');
+        const wsUrl = `${wsBase}/api/v1/ws?token=${encodeURIComponent(token || '')}`;
+        const ws = new WebSocket(wsUrl);
 
+        ws.onopen = () => console.log('WebSocket connected');
+        ws.onmessage = () => { /* handle message */ };
+        ws.onclose = () => console.log('WebSocket closed');
+
+        return () => ws.close();
+    }, []);
     useEffect(() => {
         let socket: WebSocket | null = null;
         let reconnectTimeout: ReturnType<typeof setTimeout>;

@@ -1,68 +1,65 @@
-import React, { useState } from "react"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Bell, ShieldAlert, Clock, CheckCircle2, AlertCircle, X, Loader2 } from "lucide-react"
-import { cn } from "@/lib/utils"
+import React, { useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Bell, ShieldAlert, Clock, CheckCircle2, AlertCircle, X, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { apiFetch } from "../../lib/api";
 
-type Severity = "INFO" | "WARNING" | "CRITICAL"
-type AlertStatus = "ACTIVE" | "ACKNOWLEDGED" | "RESOLVED"
-type Category = "SIGNAL" | "NETWORK" | "SYSTEM"
+type Severity = "INFO" | "WARNING" | "CRITICAL";
+type Category = "SIGNAL" | "NETWORK" | "SYSTEM";
 
 interface Alert {
-    id: number
-    probe_id: string
-    category: Category
-    severity: Severity
-    metric_key: string
-    threshold_value: number
-    actual_value: number
-    message: string
-    status: AlertStatus
-    occurrences: number
-    created_at: string
-    updated_at: string
+    id: number;
+    probe_id: string;
+    category: Category;
+    severity: Severity;
+    metric_key: string;
+    threshold_value: number;
+    actual_value: number;
+    message: string;
+    status: string;
+    occurrences: number;
+    created_at: string;
+    updated_at: string;
 }
 
 const getSeverityStyles = (severity: string) => {
     switch (severity) {
         case "CRITICAL":
-            return "bg-red-500/10 text-red-500 border-red-500/20"
+            return "bg-red-500/10 text-red-500 border-red-500/20";
         case "WARNING":
-            return "bg-amber-500/10 text-amber-500 border-amber-500/20"
+            return "bg-amber-500/10 text-amber-500 border-amber-500/20";
         default:
-            return "bg-blue-500/10 text-blue-500 border-blue-500/20"
+            return "bg-blue-500/10 text-blue-500 border-blue-500/20";
     }
-}
+};
 
-// ==================== ALERT COUNTER WIDGET ====================
 export function AlertCounterWidget({
                                        title = "Active Alerts",
-                                       showSeverityBreakdown = true
+                                       showSeverityBreakdown = true,
                                    }: {
-    title?: string
-    showSeverityBreakdown?: boolean
+    title?: string;
+    showSeverityBreakdown?: boolean;
 }) {
     const { data: alerts = [], isLoading, isError } = useQuery<Alert[]>({
         queryKey: ["widget-alerts-counter"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/alerts/active")
-            if (!res.ok) throw new Error("Failed to fetch alerts")
-            const data = await res.json()
-            return Array.isArray(data) ? data : []
+            const data = await apiFetch("/api/v1/alerts/active");
+            return Array.isArray(data) ? data : [];
         },
-        refetchInterval: 10000
-    })
+        refetchInterval: 10000,
+    });
 
     const counts = {
         total: alerts.length,
-        critical: alerts.filter(a => a.severity === "CRITICAL").length,
-        warning: alerts.filter(a => a.severity === "WARNING").length,
-        info: alerts.filter(a => a.severity === "INFO").length
-    }
+        critical: alerts.filter((a) => a.severity === "CRITICAL").length,
+        warning: alerts.filter((a) => a.severity === "WARNING").length,
+        info: alerts.filter((a) => a.severity === "INFO").length,
+    };
 
     if (isError) {
         return (
@@ -78,7 +75,7 @@ export function AlertCounterWidget({
                     </div>
                 </CardContent>
             </Card>
-        )
+        );
     }
 
     return (
@@ -89,11 +86,7 @@ export function AlertCounterWidget({
             </CardHeader>
             <CardContent>
                 <div className="text-2xl font-bold">
-                    {isLoading ? (
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    ) : (
-                        counts.total
-                    )}
+                    {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /> : counts.total}
                 </div>
                 {showSeverityBreakdown && !isLoading && (
                     <div className="flex gap-2 mt-2 flex-wrap">
@@ -112,52 +105,46 @@ export function AlertCounterWidget({
                                 {counts.info} Info
                             </Badge>
                         )}
-                        {counts.total === 0 && (
-                            <span className="text-xs text-muted-foreground">All Clear</span>
-                        )}
+                        {counts.total === 0 && <span className="text-xs text-muted-foreground">All Clear</span>}
                     </div>
                 )}
             </CardContent>
         </Card>
-    )
+    );
 }
 
-// ==================== RECENT ALERTS LIST WIDGET ====================
 export function RecentAlertsWidget({
                                        limit = 5,
                                        title = "Recent Alerts",
-                                       showDismiss = true
+                                       showDismiss = true,
                                    }: {
-    limit?: number
-    title?: string
-    showDismiss?: boolean
+    limit?: number;
+    title?: string;
+    showDismiss?: boolean;
 }) {
-    const queryClient = useQueryClient()
+    const queryClient = useQueryClient();
 
     const { data: alerts = [], isLoading, isError } = useQuery<Alert[]>({
         queryKey: ["widget-alerts-list", limit],
         queryFn: async () => {
-            const res = await fetch("/api/v1/alerts/active")
-            if (!res.ok) throw new Error("Failed to fetch alerts")
-            const data = await res.json()
-            const alertArray = Array.isArray(data) ? data : []
+            const data = await apiFetch("/api/v1/alerts/active");
+            const alertArray = Array.isArray(data) ? data : [];
             return alertArray
                 .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                .slice(0, limit)
+                .slice(0, limit);
         },
-        refetchInterval: 10000
-    })
+        refetchInterval: 10000,
+    });
 
     const acknowledge = async (id: number) => {
         try {
-            const res = await fetch(`/api/v1/alerts/acknowledge/${id}`, { method: "PUT" })
-            if (!res.ok) throw new Error("Failed to acknowledge")
-            queryClient.invalidateQueries({ queryKey: ["widget-alerts-list"] })
-            queryClient.invalidateQueries({ queryKey: ["widget-alerts-counter"] })
+            await apiFetch(`/api/v1/alerts/acknowledge/${id}`, { method: "PUT" });
+            queryClient.invalidateQueries({ queryKey: ["widget-alerts-list"] });
+            queryClient.invalidateQueries({ queryKey: ["widget-alerts-counter"] });
         } catch (error) {
-            console.error("Error acknowledging alert:", error)
+            console.error("Error acknowledging alert:", error);
         }
-    }
+    };
 
     if (isError) {
         return (
@@ -175,7 +162,7 @@ export function RecentAlertsWidget({
                     </div>
                 </CardContent>
             </Card>
-        )
+        );
     }
 
     return (
@@ -228,9 +215,7 @@ export function RecentAlertsWidget({
                                                     {alert.severity}
                                                 </Badge>
                                             </div>
-                                            <p className="text-xs font-medium leading-snug mb-1">
-                                                {alert.message}
-                                            </p>
+                                            <p className="text-xs font-medium leading-snug mb-1">{alert.message}</p>
                                             <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
                                                 <Clock className="h-2.5 w-2.5" />
                                                 <span>{new Date(alert.created_at).toLocaleTimeString()}</span>
@@ -244,55 +229,48 @@ export function RecentAlertsWidget({
                 )}
             </CardContent>
         </Card>
-    )
+    );
 }
 
-// ==================== FILTERED ALERTS WIDGET ====================
 export function FilteredAlertsWidget({
                                          limit = 10,
                                          title = "System Alerts",
                                          showDismiss = true,
-                                         defaultCategory = "ALL"
+                                         defaultCategory = "ALL",
                                      }: {
-    limit?: number
-    title?: string
-    showDismiss?: boolean
-    defaultCategory?: "ALL" | Category
+    limit?: number;
+    title?: string;
+    showDismiss?: boolean;
+    defaultCategory?: "ALL" | Category;
 }) {
-    const queryClient = useQueryClient()
-    const [category, setCategory] = useState<string>(defaultCategory)
+    const queryClient = useQueryClient();
+    const [category, setCategory] = useState<string>(defaultCategory);
 
     const { data: allAlerts = [], isLoading, isError } = useQuery<Alert[]>({
         queryKey: ["widget-alerts-filtered"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/alerts/active")
-            if (!res.ok) throw new Error("Failed to fetch alerts")
-            const data = await res.json()
-            return Array.isArray(data) ? data : []
+            const data = await apiFetch("/api/v1/alerts/active");
+            return Array.isArray(data) ? data : [];
         },
-        refetchInterval: 10000
-    })
+        refetchInterval: 10000,
+    });
 
     const alerts = React.useMemo(() => {
-        const filtered = category === "ALL"
-            ? allAlerts
-            : allAlerts.filter(a => a.category === category)
-
+        const filtered = category === "ALL" ? allAlerts : allAlerts.filter((a) => a.category === category);
         return filtered
             .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-            .slice(0, limit)
-    }, [allAlerts, category, limit])
+            .slice(0, limit);
+    }, [allAlerts, category, limit]);
 
     const acknowledge = async (id: number) => {
         try {
-            const res = await fetch(`/api/v1/alerts/acknowledge/${id}`, { method: "PUT" })
-            if (!res.ok) throw new Error("Failed to acknowledge")
-            queryClient.invalidateQueries({ queryKey: ["widget-alerts-filtered"] })
-            queryClient.invalidateQueries({ queryKey: ["widget-alerts-counter"] })
+            await apiFetch(`/api/v1/alerts/acknowledge/${id}`, { method: "PUT" });
+            queryClient.invalidateQueries({ queryKey: ["widget-alerts-filtered"] });
+            queryClient.invalidateQueries({ queryKey: ["widget-alerts-counter"] });
         } catch (error) {
-            console.error("Error acknowledging alert:", error)
+            console.error("Error acknowledging alert:", error);
         }
-    }
+    };
 
     if (isError) {
         return (
@@ -312,7 +290,7 @@ export function FilteredAlertsWidget({
                     </div>
                 </CardContent>
             </Card>
-        )
+        );
     }
 
     return (
@@ -345,9 +323,7 @@ export function FilteredAlertsWidget({
                     <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground">
                         <CheckCircle2 className="h-8 w-8 mb-2 opacity-50 text-emerald-500" />
                         <p className="text-sm font-medium">All Clear</p>
-                        <p className="text-xs">
-                            No {category !== "ALL" ? category.toLowerCase() : ""} alerts
-                        </p>
+                        <p className="text-xs">No {category !== "ALL" ? category.toLowerCase() : ""} alerts</p>
                     </div>
                 ) : (
                     <ScrollArea className="h-[300px]">
@@ -357,11 +333,12 @@ export function FilteredAlertsWidget({
                                     key={alert.id}
                                     className="p-3 border rounded-lg hover:bg-muted/50 transition-colors relative group border-l-4"
                                     style={{
-                                        borderLeftColor: alert.severity === "CRITICAL"
-                                            ? "rgb(239 68 68)"
-                                            : alert.severity === "WARNING"
-                                                ? "rgb(245 158 11)"
-                                                : "rgb(59 130 246)"
+                                        borderLeftColor:
+                                            alert.severity === "CRITICAL"
+                                                ? "rgb(239 68 68)"
+                                                : alert.severity === "WARNING"
+                                                    ? "rgb(245 158 11)"
+                                                    : "rgb(59 130 246)",
                                     }}
                                 >
                                     {showDismiss && (
@@ -391,9 +368,7 @@ export function FilteredAlertsWidget({
                                                     {alert.severity}
                                                 </Badge>
                                             </div>
-                                            <p className="text-xs font-medium leading-relaxed mb-1.5">
-                                                {alert.message}
-                                            </p>
+                                            <p className="text-xs font-medium leading-relaxed mb-1.5">{alert.message}</p>
                                             <div className="flex items-center gap-2 text-[10px] text-muted-foreground flex-wrap">
                                                 <div className="flex items-center gap-1">
                                                     <Clock className="h-2.5 w-2.5" />
@@ -417,5 +392,5 @@ export function FilteredAlertsWidget({
                 )}
             </CardContent>
         </Card>
-    )
+    );
 }

@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAlertGlobal } from "../../components/AlertProvider";
 import type { Alert } from "./types";
+import { apiFetch } from "../../lib/api";
 
 export const useAlertsViewModel = () => {
     const queryClient = useQueryClient();
@@ -11,19 +12,18 @@ export const useAlertsViewModel = () => {
     const { data: alerts = [], isLoading } = useQuery<Alert[]>({
         queryKey: ["alerts", "active"],
         queryFn: async () => {
-            const res = await fetch("/api/v1/alerts/active");
-            const data = await res.json();
+            const data = await apiFetch("/api/v1/alerts/active");
             return Array.isArray(data) ? data : [];
-        }
+        },
     });
 
     const filteredAlerts = useMemo(() => {
         if (filter === "ALL") return alerts;
-        return alerts.filter(a => a.category === filter);
+        return alerts.filter((a) => a.category === filter);
     }, [alerts, filter]);
 
     const acknowledge = async (id: number) => {
-        await fetch(`/api/v1/alerts/acknowledge/${id}`, { method: "PUT" });
+        await apiFetch(`/api/v1/alerts/acknowledge/${id}`, { method: "PUT" });
         queryClient.invalidateQueries({ queryKey: ["alerts"] });
     };
 
@@ -33,6 +33,6 @@ export const useAlertsViewModel = () => {
         connectionStatus,
         filter,
         setFilter,
-        acknowledge
+        acknowledge,
     };
 };

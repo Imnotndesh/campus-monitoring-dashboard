@@ -1,4 +1,4 @@
-import {useEffect, useState} from "react"
+import React, {useEffect, useState} from "react"
 import {
     Activity, CheckCircle2, ChevronRight, Clock, Layers, Loader2, MoreHorizontal, Play, Plus,
     RefreshCw, Send, Server, Tag, Terminal, Trash2, Users, XCircle, Radio, RotateCcw,
@@ -33,7 +33,6 @@ import { Separator } from "@/components/ui/separator"
 
 import { useFleetViewModel } from "./useFleetViewModel"
 import type {
-    BaseProbe,
     FleetCommandRequest,
     FleetGroup,
     FleetProbe,
@@ -43,6 +42,7 @@ import type {
 } from "./types"
 import {FleetQuickActionsWidget, UnenrolledCountWidget, UnenrolledListWidget} from "./FleetWidgets.tsx";
 import {useQuery} from "@tanstack/react-query";
+import {apiFetch} from "../../lib/api.ts";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -158,7 +158,7 @@ export function SendCommandDialog({
         if (cmdType === "fleet_maintenance") payload = { window: maintWindow }
         if (cmdType === "fleet_config") {
             try { payload = JSON.parse(configJson) }
-            catch (e) { alert("Invalid JSON format"); return; }
+            catch (e) { alert("Invalid JSON format: ",e); return; }
         }
 
         onSend({
@@ -637,7 +637,7 @@ function CreateTemplateDialog({
 // ─── Probe Detail Panel ───────────────────────────────────────────────────────
 
 function ProbeDetailPanel({
-                              probe, onUnenroll, onClose, groups, onSendCommand
+                              probe, onUnenroll, onClose
                           }: {
 
     probe: FleetProbe
@@ -648,14 +648,10 @@ function ProbeDetailPanel({
 }) {
     const { data: liveStatus, isLoading: isStatusLoading } = useQuery({
         queryKey: ["probe-live-status", probe.probe_id],
-        queryFn: async () => {
-            const res = await fetch(`/api/v1/probes/${probe.probe_id}/status`)
-            if (!res.ok) throw new Error("Status not available")
-            return res.json()
-        },
+        queryFn: async () => await apiFetch(`/api/v1/probes/${probe.probe_id}/status`),
         refetchInterval: 5000,
         retry: false,
-    })
+    });
     const [confirmUnenroll, setConfirmUnenroll] = useState(false)
 
     const statRow = (label: string, value: React.ReactNode) => (
@@ -740,7 +736,7 @@ function ProbeDetailPanel({
                                 <div className="font-medium text-right truncate">{probe?.managed_by ?? "--"}</div>
 
                                 <div className="text-muted-foreground">Current Firmware</div>
-                                <div className="font-mono text-right">{probe?.current_firmware ?? "latest"}</div>
+                                <div className="font-mono text-right">{probe?.current_firmware ?? probe?.firmware_version?? "latest"}</div>
 
                                 <div className="text-muted-foreground">Target Firmware</div>
                                 <div className="font-mono text-right">{probe?.target_firmware ?? "latest"}</div>
