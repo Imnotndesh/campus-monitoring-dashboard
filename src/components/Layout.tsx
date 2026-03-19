@@ -1,5 +1,5 @@
-import { useState } from "react"
-import { Outlet, NavLink } from "react-router-dom"
+import { useState } from "react";
+import { Outlet, NavLink } from "react-router-dom";
 import {
     LayoutDashboard,
     Radio,
@@ -8,16 +8,23 @@ import {
     AlertCircle,
     Network,
     Menu,
-    ChevronLeft
-} from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { BarChart3,Map } from "lucide-react"
-import {useAlertGlobal} from "./AlertProvider.tsx";
+    ChevronLeft,
+    CircuitBoardIcon,
+    BarChart3,
+    Map,
+} from "lucide-react";
+import { cn } from "../lib/utils";
+import { Button } from "./ui/button.tsx";
+import { useAlertGlobal } from "./AlertProvider";
+import { useAuth } from "../lib/auth";
 
 export default function Layout() {
-    const [isCollapsed, setIsCollapsed] = useState(false)
+    const [isCollapsed, setIsCollapsed] = useState(false);
     const { unreadCount } = useAlertGlobal();
+    const { user } = useAuth();
+
+    const isAdmin = user?.role === 'admin';
+
     return (
         <div className="flex min-h-screen bg-background text-foreground font-sans transition-colors duration-300">
             <aside
@@ -26,7 +33,7 @@ export default function Layout() {
                     isCollapsed ? "w-[70px]" : "w-64"
                 )}
             >
-                {/* Header / Toggle */}
+                {/* Header unchanged */}
                 <div className="h-16 flex items-center px-4 border-b">
                     {!isCollapsed && (
                         <h1 className="text-xl font-bold tracking-tight flex items-center gap-2 animate-in fade-in duration-300">
@@ -34,7 +41,6 @@ export default function Layout() {
                             <span>Monitor</span>
                         </h1>
                     )}
-
                     <Button
                         variant="ghost"
                         size="icon"
@@ -48,8 +54,14 @@ export default function Layout() {
                 {/* Navigation */}
                 <nav className="p-2 space-y-2 flex-1">
                     <NavItem to="/" icon={<LayoutDashboard size={20} />} label="Dashboard" collapsed={isCollapsed} />
-                    <NavItem to="/probes" icon={<Radio size={20} />} label="Probes" collapsed={isCollapsed} />
-                    <NavItem to="/fleet" icon={<Building2 size={20} />} label="Fleet" collapsed={isCollapsed} />
+                    {/* Conditionally show Probes and Fleet for admins */}
+                    {isAdmin && (
+                        <>
+                            <NavItem to="/probes" icon={<Radio size={20} />} label="Probes" collapsed={isCollapsed} />
+                            <NavItem to="/fleet" icon={<Building2 size={20} />} label="Fleet" collapsed={isCollapsed} />
+                            <NavItem to="/tools/flasher" icon={<CircuitBoardIcon size={20}/>} label="firmware" collapsed={isCollapsed} />
+                        </>
+                    )}
                     <NavItem
                         to="/alerts"
                         icon={<AlertCircle className="h-5 w-5" />}
@@ -67,13 +79,11 @@ export default function Layout() {
                 </div>
             </aside>
 
-            {/* --- Main Content Area --- */}
             <main
                 className={cn(
                     "flex-1 transition-all duration-300 ease-in-out min-h-screen",
                     isCollapsed ? "ml-[70px]" : "ml-64"
                 )}
-                // Clicking the main content collapses the sidebar if it is open (optional behavior)
                 onClick={() => !isCollapsed && setIsCollapsed(true)}
             >
                 <div className="p-8 max-w-7xl mx-auto">
@@ -81,10 +91,10 @@ export default function Layout() {
                 </div>
             </main>
         </div>
-    )
+    );
 }
 
-function NavItem({ to, icon, label, collapsed }: { to: string; icon: any; label: string; collapsed: boolean }) {
+function NavItem({ to, icon, label, collapsed, badgeCount }: { to: string; icon: any; label: string; collapsed: boolean; badgeCount?: number }) {
     return (
         <NavLink
             to={to}
@@ -104,8 +114,13 @@ function NavItem({ to, icon, label, collapsed }: { to: string; icon: any; label:
                 "text-sm font-medium transition-all duration-300",
                 collapsed ? "opacity-0 w-0 translate-x-[-10px]" : "opacity-100 w-auto translate-x-0"
             )}>
-        {label}
-      </span>
+                {label}
+            </span>
+            {badgeCount !== undefined && badgeCount > 0 && (
+                <span className="ml-auto bg-primary/20 text-primary text-[10px] font-bold px-1.5 py-0.5 rounded-full">
+                    {badgeCount}
+                </span>
+            )}
         </NavLink>
-    )
+    );
 }

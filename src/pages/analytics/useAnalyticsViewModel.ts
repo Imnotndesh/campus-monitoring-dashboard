@@ -215,9 +215,12 @@ export function useAnalyticsViewModel() {
     const triggerScanMutation = useMutation({
         mutationFn: async () => {
             return await apiFetch(`/api/v1/probes/${selectedProbe}/command`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ command: "deep_scan", params: {} }),
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    command_type: 'deep_scan',
+                    payload: {}
+                })
             });
         },
         onSuccess: () => {
@@ -226,7 +229,7 @@ export function useAnalyticsViewModel() {
         },
         onError: () => {
             toast.error("Failed to start scan");
-        },
+        }
     });
 
     const deleteScanMutation = useMutation({

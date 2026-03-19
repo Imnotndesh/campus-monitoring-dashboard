@@ -54,8 +54,8 @@ interface ProbeComparison {
     stability_score: number;
     sample_count: number;
 }
+
 const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 };
-const hours = rangeToHours[range];
 
 export function KpiCardWidget({
                                   title,
@@ -70,7 +70,6 @@ export function KpiCardWidget({
     range?: AnalyticsTimeRange;
     metric: "stability" | "latency" | "rssi" | "loss";
 }) {
-    const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 };
     const hours = rangeToHours[range];
 
     const getDateRange = () => {
@@ -155,7 +154,7 @@ export function RssiChartWidget({
     range?: AnalyticsTimeRange;
     title?: string;
 }) {
-
+    const hours = rangeToHours[range];
 
     const getDateRange = () => {
         const end = new Date();
@@ -459,7 +458,6 @@ export function ProbeComparisonWidget({
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState<"all" | "active" | "inactive" | "maintenance">("active");
 
-    const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 };
     const hours = rangeToHours[range];
 
     const { data: probes = [] } = useQuery<Probe[]>({
@@ -595,9 +593,7 @@ export function ProbeComparisonWidget({
                     {selectedProbeIds.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground">
                             <BarChart3 className="h-8 w-8 mb-2 opacity-50" />
-                            <p className="text-sm">
-                                Select 2-{maxProbes} probes to compare
-                            </p>
+                            <p className="text-sm">Select 2-{maxProbes} probes to compare</p>
                         </div>
                     ) : selectedProbeIds.length === 1 ? (
                         <div className="flex flex-col items-center justify-center h-[300px] text-muted-foreground">
@@ -695,9 +691,7 @@ export function ProbeComparisonWidget({
             <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                 <DialogContent className="max-w-2xl">
                     <DialogHeader>
-                        <DialogTitle>
-                            Select Probes to Compare ({selectedProbeIds.length}/{maxProbes})
-                        </DialogTitle>
+                        <DialogTitle>Select Probes to Compare ({selectedProbeIds.length}/{maxProbes})</DialogTitle>
                     </DialogHeader>
                     <div className="space-y-4">
                         <div className="flex gap-2">
@@ -710,10 +704,7 @@ export function ProbeComparisonWidget({
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
                             </div>
-                            <Tabs
-                                value={statusFilter}
-                                onValueChange={(v) => setStatusFilter(v as any)}
-                            >
+                            <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
                                 <TabsList>
                                     <TabsTrigger value="all" className="text-xs">
                                         All

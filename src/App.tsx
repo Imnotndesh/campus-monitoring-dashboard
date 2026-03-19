@@ -13,6 +13,7 @@ import LoginPage from "./pages/auth/Login.tsx"
 import RegisterPage from "./pages/auth/Register.tsx"
 import ServerSetup from "./pages/setup/ServerSetup.tsx";
 import OAuthCallback from "./pages/auth/OAuthCallback.tsx";
+import FirmwareFlasher from "./pages/tools/FirmwareFlasher.tsx"
 
 export default function App() {
     return (
@@ -38,6 +39,7 @@ export default function App() {
                         <Route element={<Layout />}>
                             <Route path="/probes" element={<Probes />} />
                             <Route path="/fleet" element={<Fleet />} />
+                            <Route path="/tools/flasher" element={<FirmwareFlasher />} />
                         </Route>
                     </Route>
 
