@@ -1,17 +1,19 @@
 import {
-    Plus, Search, Save, MapPin, AlertCircle, UserPlus
+     Search, Save, MapPin, FileText
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { Button } from "../../components/ui/button"
+import { Input } from "../../components/ui/input"
+import { Label } from "../../components/ui/label"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "../../components/ui/sheet"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "../../components/ui/dialog"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs"
+import { ScrollArea } from "../../components/ui/scroll-area"
 import TopologyGraph from "../../components/TopologyGraph"
-import { useHeatmapViewModel } from "@/pages/heatmap/useHeatmapViewModel"
+import { useHeatmapViewModel } from "../heatmap/useHeatmapViewModel"
 import { useProbesViewModel } from "./useProbesViewModel"
 import { ProbeCard, ProbeControls, CommandHistoryList, ConfigDialogs } from "./components"
+import {useState} from "react";
+import {DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger} from "../../components/ui/dropdown-menu.tsx";
 
 function ProbeTopologyWidget({ probeId }: { probeId: string }) {
     const { graphData, isLoading } = useHeatmapViewModel();
@@ -27,6 +29,8 @@ function ProbeTopologyWidget({ probeId }: { probeId: string }) {
     );
 }
 export default function Probes() {
+    const [complianceDialogOpen, setComplianceDialogOpen] = useState(false);
+    const [complianceThresholds, setComplianceThresholds] = useState({ minRSSI: -70, maxLatency: 100, maxPacketLoss: 2.0 });
     const vm = useProbesViewModel()
 
     const handleConfigSubmit = (data: any) => {
@@ -54,6 +58,24 @@ export default function Probes() {
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input placeholder="Search probes..." className="pl-8" />
                     </div>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                                <FileText className="h-4 w-4 mr-2" /> Reports
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem onClick={vm.generateProbeReport}>
+                                Probe List Report
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={vm.generateFirmwareVersionReport}>
+                                Firmware Version Report
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setComplianceDialogOpen(true)}>
+                                Compliance Report
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
 
@@ -204,6 +226,33 @@ export default function Probes() {
                 onSubmit={handleConfigSubmit}
                 isSubmitting={vm.isSubmittingConfig}
             />
+            <Dialog open={complianceDialogOpen} onOpenChange={setComplianceDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Compliance Report Thresholds</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-4">
+                        <div className="grid gap-2">
+                            <Label>Min RSSI (dBm)</Label>
+                            <Input type="number" value={complianceThresholds.minRSSI} onChange={e => setComplianceThresholds({...complianceThresholds, minRSSI: parseInt(e.target.value)})} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Max Latency (ms)</Label>
+                            <Input type="number" value={complianceThresholds.maxLatency} onChange={e => setComplianceThresholds({...complianceThresholds, maxLatency: parseInt(e.target.value)})} />
+                        </div>
+                        <div className="grid gap-2">
+                            <Label>Max Packet Loss (%)</Label>
+                            <Input type="number" step="0.1" value={complianceThresholds.maxPacketLoss} onChange={e => setComplianceThresholds({...complianceThresholds, maxPacketLoss: parseFloat(e.target.value)})} />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button onClick={() => {
+                            vm.generateComplianceReport(complianceThresholds);
+                            setComplianceDialogOpen(false);
+                        }}>Generate</Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     )
 }
