@@ -26,7 +26,7 @@ import {
     Layers,
     BarChart3,
     AlertOctagon,
-    Network,
+    Network, FileText,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -86,6 +86,10 @@ export default function Analytics() {
                             </button>
                         ))}
                     </div>
+                    <Button variant="outline" size="sm" onClick={vm.generateReport}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Generate Report
+                    </Button>
                 </div>
             </div>
 

@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Activity, Clock, ShieldAlert, CheckCircle2 } from "lucide-react";
+import {Activity, Clock, ShieldAlert, CheckCircle2, FileText} from "lucide-react";
 import { useAlertsViewModel } from "./useAlertsViewModel";
 import { useAlertGlobal } from "../../components/AlertProvider";
 import { cn } from "@/lib/utils";
@@ -18,6 +18,7 @@ export default function AlertsPage() {
         acknowledge
     } = useAlertsViewModel();
     const { setUnreadCount } = useAlertGlobal();
+    const vm = useAlertsViewModel()
 
     useEffect(() => {
         setUnreadCount(0);
@@ -49,6 +50,10 @@ export default function AlertsPage() {
                             {connectionStatus === 'connected' ? 'Connected' : 'Disconnected'}
                         </span>
                     </div>
+                    <Button variant="outline" size="sm" onClick={vm.generateReport}>
+                        <FileText className="h-4 w-4 mr-2" />
+                        Generate Report
+                    </Button>
                 </div>
 
                 {/* --- CATEGORY FILTERS --- */}

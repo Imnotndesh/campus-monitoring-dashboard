@@ -5,7 +5,6 @@ export async function apiFetch(endpoint: string, options?: RequestInit) {
     const url = cleanBase ? `${cleanBase}/${cleanEndpoint}` : `/${cleanEndpoint}`;
 
     const token = localStorage.getItem('access_token');
-    console.log(`apiFetch: ${endpoint}, token: ${token ? 'present' : 'missing'}`);
 
     const headers: HeadersInit = {
         'Content-Type': 'application/json',
@@ -29,27 +28,22 @@ export async function apiFetch(endpoint: string, options?: RequestInit) {
                 });
                 if (refreshRes.ok) {
                     const data = await refreshRes.json();
-                    console.log('apiFetch: token refreshed successfully');
                     localStorage.setItem('access_token', data.access_token);
                     headers['Authorization'] = `Bearer ${data.access_token}`;
                     res = await fetch(url, { ...options, headers });
                 } else {
-                    console.error('apiFetch: refresh failed', refreshRes.status);
-                    // Force logout
                     localStorage.removeItem('access_token');
                     localStorage.removeItem('refresh_token');
                     window.location.href = '/login';
                     throw new Error('Session expired');
                 }
             } catch (err) {
-                console.error('apiFetch: refresh error', err);
                 localStorage.removeItem('access_token');
                 localStorage.removeItem('refresh_token');
                 window.location.href = '/login';
                 throw new Error('Session expired');
             }
         } else {
-            console.warn('apiFetch: no refresh token');
             localStorage.removeItem('access_token');
             window.location.href = '/login';
             throw new Error('Session expired');
@@ -65,4 +59,16 @@ export async function apiFetch(endpoint: string, options?: RequestInit) {
         return {};
     }
     return res.json();
+}
+export async function fetchBlob(url: string, options?: RequestInit): Promise<Blob> {
+    const token = localStorage.getItem('access_token');
+    const headers: HeadersInit = {
+        ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        ...options?.headers,
+    };
+    const response = await fetch(url, { ...options, headers });
+    if (!response.ok) {
+        throw new Error(`HTTP ${response.status}`);
+    }
+    return response.blob();
 }
