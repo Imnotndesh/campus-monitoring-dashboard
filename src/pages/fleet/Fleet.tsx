@@ -1114,8 +1114,8 @@ export default function Fleet() {
                     </p>
                 </div>
                 <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" className="gap-2" onClick={vm.refreshAll}>
-                        <RefreshCw className="h-4 w-4" /> Refresh
+                    <Button variant="outline" size="sm" className="gap-2" onClick={vm.generateFleetReport}>
+                        <FileText className="h-4 w-4" /> Fleet Report
                     </Button>
                     <Button size="sm" className="gap-2" onClick={() => setSendCmdOpen(true)}>
                         <Send className="h-4 w-4" /> Send Command
@@ -1343,6 +1343,9 @@ export default function Fleet() {
                         <div className="flex-1" />
                         <Button size="sm" className="gap-2" onClick={() => setSendCmdOpen(true)}>
                             <Plus className="h-4 w-4" /> New Command
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={vm.generateCommandSuccessReport}>
+                            <FileText className="h-4 w-4 mr-2" /> Command Success Report
                         </Button>
                     </div>
 

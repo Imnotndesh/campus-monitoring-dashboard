@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import type { Probe, ProbeFormValues, ProbeStatusCache, ProbeConfigCache } from "./types";
-import { apiFetch } from "../../lib/api";
+import {apiFetch, fetchBlob} from "../../lib/api";
 
 export function useProbesViewModel() {
     const queryClient = useQueryClient();
@@ -140,6 +140,65 @@ export function useProbesViewModel() {
             toast.error(`Delete failed: ${err.message}`);
         },
     });
+    const generateProbeReport = async () => {
+        const url = `/api/v1/reports/generate?type=probes&format=pdf`;
+        try {
+            const blob = await fetchBlob(url);
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `probe_report_${new Date().toISOString().slice(0, 19)}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (error) {
+            console.error("Report download failed", error);
+            toast.error("Failed to generate report");
+        }
+    };
+
+    const generateFirmwareVersionReport = async () => {
+        const url = `/api/v1/reports/generate?type=firmware_version&format=pdf`;
+        try {
+            const blob = await fetchBlob(url);
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `firmware_report_${new Date().toISOString().slice(0, 19)}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (error) {
+            console.error("Report download failed", error);
+            toast.error("Failed to generate report");
+        }
+    };
+
+    const generateComplianceReport = async (thresholds: { minRSSI: number; maxLatency: number; maxPacketLoss: number }) => {
+        const params = new URLSearchParams({
+            min_rssi: thresholds.minRSSI.toString(),
+            max_latency: thresholds.maxLatency.toString(),
+            max_packet_loss: thresholds.maxPacketLoss.toString(),
+            format: 'pdf'
+        });
+        const url = `/api/v1/reports/generate?type=compliance&${params}`;
+        try {
+            const blob = await fetchBlob(url);
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `compliance_report_${new Date().toISOString().slice(0, 19)}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (error) {
+            console.error("Report download failed", error);
+            toast.error("Failed to generate report");
+        }
+    };
 
     return {
         probes,
@@ -157,7 +216,9 @@ export function useProbesViewModel() {
         setIsAdoptOpen,
         setIsSheetOpen,
         setConfigDialogType,
-
+        generateProbeReport,
+        generateFirmwareVersionReport,
+        generateComplianceReport,
         pingProbe: pingMutation.mutate,
         isPinging: pingMutation.isPending,
         sendCommand: commandMutation.mutate,

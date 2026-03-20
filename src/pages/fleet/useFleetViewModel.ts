@@ -14,7 +14,7 @@ import type {
     ScheduledTask,
     ProbeSchedules,
 } from "./types";
-import { apiFetch } from "../../lib/api";
+import {apiFetch, fetchBlob} from "../../lib/api";
 
 export function useFleetViewModel() {
     const queryClient = useQueryClient();
@@ -304,6 +304,47 @@ export function useFleetViewModel() {
         },
         onError: (e: Error) => toast.error(e.message),
     });
+    const generateFleetReport = async () => {
+        const url = `/api/v1/reports/generate?type=fleet&format=pdf`;
+        try {
+            const blob = await fetchBlob(url);
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `fleet_report_${new Date().toISOString().slice(0, 19)}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (error) {
+            console.error("Report download failed", error);
+            toast.error("Failed to generate report");
+        }
+    };
+
+    const generateCommandSuccessReport = async () => {
+        const end = new Date();
+        const start = new Date();
+        start.setDate(end.getDate() - 7); // Last 7 days
+        const from = start.toISOString();
+        const to = end.toISOString();
+        const url = `/api/v1/reports/generate?type=command_success&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&format=pdf`;
+        try {
+            const blob = await fetchBlob(url);
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `command_success_report_${new Date().toISOString().slice(0, 19)}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (error) {
+            console.error("Report download failed", error);
+            toast.error("Failed to generate report");
+        }
+    };
+
 
     return {
         selectedProbeId,
@@ -319,6 +360,8 @@ export function useFleetViewModel() {
         fleetStatus,
         isStatusLoading,
         probes,
+        generateFleetReport,
+        generateCommandSuccessReport,
         isProbesLoading,
         selectedProbe,
         groups,

@@ -14,7 +14,7 @@ import type {
     Command,
     RoamingSession,
 } from "./types";
-import { apiFetch } from "../../lib/api";
+import {apiFetch, fetchBlob} from "../../lib/api";
 
 export function useAnalyticsViewModel() {
     const queryClient = useQueryClient();
@@ -210,8 +210,90 @@ export function useAnalyticsViewModel() {
         enabled: selectedProbe !== "all",
         refetchInterval: 5000,
     });
+    const generateAnalyticsReport = async () => {
+        const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 };
+        const hours = rangeToHours[range];
+        const end = new Date();
+        const start = new Date();
+        start.setHours(end.getHours() - hours);
 
-    // Mutations
+        const from = start.toISOString();
+        const to = end.toISOString();
+
+        const baseUrl = `/api/v1/reports/generate?type=analytics&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&format=pdf`;
+        const probeParam = selectedProbe !== "all" ? `&probe_ids=${encodeURIComponent(selectedProbe)}` : "";
+        const url = baseUrl + probeParam;
+
+        try {
+            const blob = await fetchBlob(url);
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `analytics_report_${new Date().toISOString().slice(0, 19)}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (error) {
+            console.error("Report download failed", error);
+            toast.error("Failed to generate report");
+        }
+    };
+
+    const generateOutageReport = async () => {
+        const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 };
+        const hours = rangeToHours[range];
+        const end = new Date();
+        const start = new Date();
+        start.setHours(end.getHours() - hours);
+
+        const from = start.toISOString();
+        const to = end.toISOString();
+
+        const url = `/api/v1/reports/generate?type=outage&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&format=pdf`;
+        try {
+            const blob = await fetchBlob(url);
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `outage_report_${new Date().toISOString().slice(0, 19)}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (error) {
+            console.error("Report download failed", error);
+            toast.error("Failed to generate report");
+        }
+    };
+
+    const generateNetworkBaselineReport = async () => {
+        const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 };
+        const hours = rangeToHours[range];
+        const end = new Date();
+        const start = new Date();
+        start.setHours(end.getHours() - hours);
+
+        const from = start.toISOString();
+        const to = end.toISOString();
+
+        const url = `/api/v1/reports/generate?type=network_baseline&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&format=pdf`;
+        try {
+            const blob = await fetchBlob(url);
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `baseline_report_${new Date().toISOString().slice(0, 19)}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (error) {
+            console.error("Report download failed", error);
+            toast.error("Failed to generate report");
+        }
+    };
+
     const triggerScanMutation = useMutation({
         mutationFn: async () => {
             return await apiFetch(`/api/v1/probes/${selectedProbe}/command`, {
@@ -286,6 +368,9 @@ export function useAnalyticsViewModel() {
         setComparisonProbes,
         probes,
         chartData,
+        generateAnalyticsReport,
+        generateOutageReport,
+        generateNetworkBaselineReport,
         normalizedStats,
         channels,
         apData,

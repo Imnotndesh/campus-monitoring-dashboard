@@ -2,7 +2,8 @@ import { useState, useMemo } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAlertGlobal } from "../../components/AlertProvider";
 import type { Alert } from "./types";
-import { apiFetch } from "../../lib/api";
+import { apiFetch, fetchBlob } from "../../lib/api";
+import { toast } from "sonner";
 
 export const useAlertsViewModel = () => {
     const queryClient = useQueryClient();
@@ -27,6 +28,30 @@ export const useAlertsViewModel = () => {
         queryClient.invalidateQueries({ queryKey: ["alerts"] });
     };
 
+    const generateReport = async () => {
+        const end = new Date();
+        const start = new Date();
+        start.setHours(end.getHours() - 24);
+        const from = start.toISOString();
+        const to = end.toISOString();
+
+        const url = `/api/v1/reports/generate?type=alerts&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&format=pdf`;
+        try {
+            const blob = await fetchBlob(url);
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `alerts_report_${new Date().toISOString().slice(0, 19)}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (error) {
+            console.error("Report download failed", error);
+            toast.error("Failed to generate report");
+        }
+    };
+
     return {
         alerts: filteredAlerts,
         isLoading,
@@ -34,5 +59,6 @@ export const useAlertsViewModel = () => {
         filter,
         setFilter,
         acknowledge,
+        generateReport,
     };
 };
