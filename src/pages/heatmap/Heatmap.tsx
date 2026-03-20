@@ -1,7 +1,7 @@
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { X, Activity, AlertTriangle } from "lucide-react";
+import {X, Activity, AlertTriangle, FileText} from "lucide-react";
 import { useHeatmapViewModel } from "./useHeatmapViewModel";
 import TopologyGraph from "@/components/TopologyGraph";
 import { cn } from "@/lib/utils";
@@ -16,6 +16,7 @@ export default function HeatmapPage() {
         setMetric,
         selectedFloor,
         setSelectedFloor,
+        generateSiteSurveyReport,
     } = useHeatmapViewModel();
 
     return (
@@ -31,6 +32,10 @@ export default function HeatmapPage() {
                         <SelectItem value="packet_loss">Packet Loss</SelectItem>
                     </SelectContent>
                 </Select>
+                <Button variant="outline" size="sm" onClick={generateSiteSurveyReport}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Site Survey
+                </Button>
             </div>
 
             <div className="flex-1">

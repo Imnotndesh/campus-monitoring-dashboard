@@ -1,7 +1,8 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import type { TopologyLayout, HeatmapResponse, FloorDetails } from "./types";
-import { apiFetch } from "../../lib/api";
+import {apiFetch, fetchBlob} from "../../lib/api";
+import {toast} from "sonner";
 
 export const useHeatmapViewModel = () => {
     const [metric, setMetric] = useState<string>("rssi");
@@ -34,7 +35,29 @@ export const useHeatmapViewModel = () => {
         enabled: !!selectedFloor,
         refetchInterval: 5000,
     });
-
+    const generateSiteSurveyReport = async () => {
+        if (!selectedFloor) {
+            toast.warning("Please select a floor first");
+            return;
+        }
+        const building = selectedFloor.buildingName;
+        const floor = selectedFloor.floorId;
+        const url = `/api/v1/reports/generate?type=site_survey&building=${encodeURIComponent(building)}&floor=${encodeURIComponent(floor)}&format=pdf`;
+        try {
+            const blob = await fetchBlob(url);
+            const downloadUrl = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = downloadUrl;
+            a.download = `site_survey_${building}_${floor}_${new Date().toISOString().slice(0, 19)}.pdf`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(downloadUrl);
+        } catch (error) {
+            console.error("Report download failed", error);
+            toast.error("Failed to generate report");
+        }
+    };
     const graphData = useMemo(() => {
         const nodes: any[] = [];
         const links: any[] = [];
@@ -95,6 +118,7 @@ export const useHeatmapViewModel = () => {
 
     return {
         graphData,
+        generateSiteSurveyReport,
         floorDetails,
         isLoading: isLayoutLoading || isHeatmapLoading,
         isFloorDetailsLoading,
