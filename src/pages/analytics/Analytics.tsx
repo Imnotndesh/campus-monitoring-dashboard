@@ -38,6 +38,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { AnalyticsTimeRange } from "./types";
 import { useAnalyticsViewModel } from "./useAnalyticsViewModel";
 import { KpiCard, NoData, DeepScanVisualizer } from "./components";
+import {
+    DropdownMenu,
+    DropdownMenuContent,
+    DropdownMenuItem,
+    DropdownMenuTrigger
+} from "../../components/ui/dropdown-menu.tsx";
 
 export default function Analytics() {
     const vm = useAnalyticsViewModel();
@@ -86,10 +92,25 @@ export default function Analytics() {
                             </button>
                         ))}
                     </div>
-                    <Button variant="outline" size="sm" onClick={vm.generateReport}>
-                        <FileText className="h-4 w-4 mr-2" />
-                        Generate Report
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="outline" size="sm">
+                                <FileText className="h-4 w-4 mr-2" />
+                                Generate Report
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent>
+                            <DropdownMenuItem onClick={vm.generateAnalyticsReport}>
+                                Analytics Report
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={vm.generateOutageReport}>
+                                Outage Report
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={vm.generateNetworkBaselineReport}>
+                                Network Baseline Report
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
             </div>
 

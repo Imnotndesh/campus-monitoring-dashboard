@@ -45,7 +45,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { data: userData, isError: userError, isSuccess: userSuccess } = useQuery({
         queryKey: ['currentUser'],
         queryFn: async () => {
-            console.log('auth: fetching current user');
             const data = await apiFetch('/api/v1/auth/me', {
                 headers: { Authorization: `Bearer ${token}` },
             }) as any;
@@ -63,7 +62,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     useEffect(() => {
         if (userSuccess && userData) {
-            console.log('auth: setting user from query', userData);
             setUser(userData);
             setIsLoading(false);
         }
@@ -71,7 +69,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     useEffect(() => {
         if (userError) {
-            console.log('auth: user query error', userError);
             localStorage.removeItem('access_token');
             localStorage.removeItem('refresh_token');
             localStorage.removeItem('auth_provider');
