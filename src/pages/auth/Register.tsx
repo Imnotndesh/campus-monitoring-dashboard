@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
-import {useNavigate} from "react-router-dom";
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
+import { useNavigate } from 'react-router-dom';
+import { User, Mail, Lock, UserPlus, ArrowRight } from 'lucide-react';
 
 export default function RegisterPage() {
     const [username, setUsername] = useState('');
@@ -23,42 +24,66 @@ export default function RegisterPage() {
     };
 
     return (
-        <div className="flex items-center justify-center min-h-screen">
-            <Card className="w-96">
-                <CardHeader>
-                    <CardTitle>Register</CardTitle>
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background/95 to-primary/5 p-4">
+            <Card className="w-full max-w-md border-border/40 shadow-xl bg-card/95 backdrop-blur-sm">
+                <CardHeader className="space-y-1 text-center">
+                    <div className="flex justify-center mb-4">
+                        <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
+                            <UserPlus className="h-6 w-6 text-primary" />
+                        </div>
+                    </div>
+                    <CardTitle className="text-2xl">Create an account</CardTitle>
+                    <CardDescription>Get started with your new account</CardDescription>
                 </CardHeader>
                 <CardContent>
                     <form onSubmit={handleSubmit} className="space-y-4">
-                        <Input
-                            type="text"
-                            placeholder="Username"
-                            value={username}
-                            onChange={(e) => setUsername(e.target.value)}
-                            required
-                        />
-                        <Input
-                            type="email"
-                            placeholder="Email"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            required
-                        />
-                        <Input
-                            type="password"
-                            placeholder="Password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                        />
+                        <div className="relative">
+                            <User className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                type="text"
+                                placeholder="Username"
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                className="pl-9"
+                                required
+                            />
+                        </div>
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                type="email"
+                                placeholder="Email"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="pl-9"
+                                required
+                            />
+                        </div>
+                        <div className="relative">
+                            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                type="password"
+                                placeholder="Password"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                className="pl-9"
+                                required
+                            />
+                        </div>
                         <Button type="submit" className="w-full">
                             Register
-                        </Button>
-                        <Button variant="outline" className="w-full" onClick={() => navigate('/login')}>
-                            Back to login
+                            <ArrowRight className="ml-2 h-4 w-4" />
                         </Button>
                     </form>
                 </CardContent>
+                <CardFooter className="flex justify-center">
+                    <div className="text-center text-sm text-muted-foreground">
+                        Already have an account?{' '}
+                        <Button variant="link" className="p-0 h-auto" onClick={() => navigate('/login')}>
+                            Sign in
+                        </Button>
+                    </div>
+                </CardFooter>
             </Card>
         </div>
     );
