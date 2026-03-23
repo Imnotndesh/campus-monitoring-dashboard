@@ -1,10 +1,10 @@
-import { Card } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card } from "../../components/ui/card";
+import { Button } from "../../components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import {X, Activity, AlertTriangle, FileText} from "lucide-react";
 import { useHeatmapViewModel } from "./useHeatmapViewModel";
-import TopologyGraph from "@/components/TopologyGraph";
-import { cn } from "@/lib/utils";
+import TopologyGraph from "../../components/TopologyGraph";
+import { cn } from "../../lib/utils";
 
 export default function HeatmapPage() {
     const {
