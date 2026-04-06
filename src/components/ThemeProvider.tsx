@@ -1,10 +1,10 @@
-import { createContext, useContext, useEffect, useState } from "react"
+import {createContext, type ReactNode, useContext, useEffect, useState} from "react"
 
 type Theme = "dark" | "light"
 type ThemeColor = "zinc" | "blue" | "emerald" | "orange" | "violet"
 
 type ThemeProviderProps = {
-    children: React.ReactNode
+    children: ReactNode
     defaultTheme?: Theme
     defaultColor?: ThemeColor
     storageKey?: string
@@ -26,11 +26,11 @@ const ThemeProviderContext = createContext<ThemeProviderState>({
 
 // These must match Tailwind HSL format (no 'deg', just space separated numbers)
 const COLORS: Record<ThemeColor, string> = {
-    zinc: "0 0% 98%",             // White-ish for Dark Mode Primary
-    blue: "217.2 91.2% 59.8%",    // Blue 500
-    emerald: "142.1 76.2% 36.3%", // Emerald 500
-    orange: "20.5 90.2% 48.2%",   // Orange 500
-    violet: "262.1 83.3% 57.8%",  // Violet 500
+    zinc: "0 0% 98%",
+    blue: "217.2 91.2% 59.8%",
+    emerald: "142.1 76.2% 36.3%",
+    orange: "20.5 90.2% 48.2%",
+    violet: "262.1 83.3% 57.8%",
 }
 
 export function ThemeProvider({
@@ -50,14 +50,8 @@ export function ThemeProvider({
 
     useEffect(() => {
         const root = window.document.documentElement
-
-        // 1. Reset Classes
         root.classList.remove("light", "dark")
         root.classList.add(theme)
-
-        // 2. Apply Dynamic Primary Color
-        // If user picks 'zinc' (default), we don't override, letting index.css handle it.
-        // If they pick a color, we override the CSS variable.
         if (color !== 'zinc') {
             root.style.setProperty("--primary", COLORS[color])
             // For colored themes, standard white text usually looks best on top

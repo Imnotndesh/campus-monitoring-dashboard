@@ -18,7 +18,7 @@ interface AuthContextType {
     loginOAuth: (provider: string) => void;
     verify2FA: (tempToken: string, code: string) => Promise<void>;
     logout: () => Promise<void>;
-    register: (username: string, email: string, password: string) => Promise<void>;
+    register: (username: string, email: string, password: string, role?: string) => Promise<void>;
     refreshToken: () => Promise<void>;
 }
 
@@ -138,7 +138,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
 
     const registerMutation = useMutation({
-        mutationFn: async (data: { username: string; email: string; password: string }) => {
+        mutationFn: async (data: { username: string; email: string; password: string; role?: string }) => {
             return apiFetch('/api/v1/auth/register', {
                 method: 'POST',
                 body: JSON.stringify(data),
@@ -195,8 +195,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    const register = async (username: string, email: string, password: string) => {
-        await registerMutation.mutateAsync({ username, email, password });
+    const register = async (username: string, email: string, password: string, role?: string) => {
+        await registerMutation.mutateAsync({ username, email, password, role });
     };
 
     const refreshToken = async () => {
