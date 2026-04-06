@@ -1,73 +1,59 @@
-# React + TypeScript + Vite
+# Campus Monitor Web UI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Web dashboard for the Campus Network Monitoring System – a real‑time network intelligence platform.
 
-Currently, two official plugins are available:
+![Dashboard Overview](screenshots/dashboard.png)
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## Features
 
-## React Compiler
+- **Interactive Dashboard** – Customizable widget grid (KPI cards, charts, alerts).
+- **Probe Management** – List, search, adopt, configure, and delete probes.
+- **Fleet Control** – Group probes, apply configuration templates, send bulk commands (OTA, deep scan, reboot).
+- **Analytics** – RSSI/latency/packet loss trends, channel utilization, congestion analysis, AP heatmaps.
+- **Alerts** – Real‑time incident stream, severity filters, acknowledge/dismiss actions.
+- **Reports** – Generate PDF reports (alerts, analytics, fleet, compliance, firmware versions, outages).
+- **Firmware Flasher** – Web‑based ESP32 flasher (Web Serial API) with verbose logs and independent serial logger.
+- **Authentication** – Local login with 2FA and OAuth (Pocket ID).
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Screenshots
 
-## Expanding the ESLint configuration
+| Page | Preview |
+|------|---------|
+| Login | ![Login](screenshots/login.png) |
+| Dashboard | ![Dashboard](screenshots/dashboard.png) |
+| Probes | ![Probes](screenshots/probes.png) |
+| Fleet | ![Fleet](screenshots/fleet.png) |
+| Analytics | ![Analytics](screenshots/analytics.png) |
+| Alerts | ![Alerts](screenshots/alerts.png) |
+| Firmware Flasher | ![Flasher](screenshots/flasher.png) |
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Tech Stack
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- React 18 + TypeScript
+- Vite
+- Tailwind CSS + shadcn/ui
+- TanStack Query
+- Recharts
+- Lucide Icons
+- Web Serial API (esptool‑js)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## Development
+### Installation
+Clone the repo and then from the directory run the following
+```bash
+npm install
+npm run dev
+````
+### Environment Variables
+Create a .env file:
+```text
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+VITE_API_URL=http://localhost:8080
+VITE_ENABLE_ADMIN_REGISTRATION=false
 ```
-
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### Build
+```bash
+npm run build
 ```
+### License
+Found at [LICENSE.md](License.md)
