@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import {type FormEvent, useEffect, useState} from 'react';
 import { useAuth } from '../../lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -39,7 +39,7 @@ export default function LoginPage() {
         }
     }, [tempToken, user, navigate]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         try {
             const resp = await login(username, password);
@@ -48,7 +48,7 @@ export default function LoginPage() {
             } else {
                 setLoginSuccess(true);
             }
-        } catch (error) {
+        } catch (e) {
             alert('Login failed');
         }
     };
@@ -57,7 +57,7 @@ export default function LoginPage() {
         try {
             await verify2FA(tempToken!, code);
             setTempToken(null);
-        } catch (error) {
+        } catch (e) {
             alert('Invalid 2FA code');
         }
     };

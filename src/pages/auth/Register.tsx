@@ -1,22 +1,25 @@
 import { useState } from 'react';
 import { useAuth } from '../../lib/auth';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '../../components/ui/card';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Lock, UserPlus, ArrowRight } from 'lucide-react';
+import { User, Mail, Lock, UserPlus, ArrowRight, Shield } from 'lucide-react';
 
 export default function RegisterPage() {
     const [username, setUsername] = useState('');
     const navigate = useNavigate();
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [isAdmin, setIsAdmin] = useState(false);
     const { register } = useAuth();
+
+    const enableAdminReg = import.meta.env.VITE_ENABLE_ADMIN_REGISTRATION === 'true';
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await register(username, email, password);
+            await register(username, email, password, isAdmin ? 'admin' : undefined);
             alert('Registration successful! Please login.');
         } catch (error) {
             alert('Registration failed');
@@ -70,6 +73,22 @@ export default function RegisterPage() {
                                 required
                             />
                         </div>
+
+                        {enableAdminReg && (
+                            <div className="flex items-center gap-2">
+                                <input
+                                    type="checkbox"
+                                    id="admin"
+                                    checked={isAdmin}
+                                    onChange={(e) => setIsAdmin(e.target.checked)}
+                                    className="rounded border-gray-300 text-primary focus:ring-primary"
+                                />
+                                <label htmlFor="admin" className="text-sm flex items-center gap-1 cursor-pointer">
+                                    <Shield className="h-4 w-4" /> Register as administrator
+                                </label>
+                            </div>
+                        )}
+
                         <Button type="submit" className="w-full">
                             Register
                             <ArrowRight className="ml-2 h-4 w-4" />
