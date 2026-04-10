@@ -1,20 +1,26 @@
-import React from "react";
+import React, {useEffect, useState} from "react";
 import {
     Activity,
     AlertCircle,
     AlertTriangle,
     ArrowDownUp,
-    Calendar,
+    Calendar, Loader2,
     Signal,
     TrendingDown,
     Wifi,
     Zap,
 } from "lucide-react";
+import {Calendar as reactcal} from 'react-calendar';
+import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer,BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
+import 'react-calendar/dist/Calendar.css';
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameDay } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import type { Command } from "./types";
+import {apiFetch} from "../../lib/api.ts";
+import {useQuery} from "@tanstack/react-query";
 
 export function NoData() {
     return (
@@ -174,5 +180,156 @@ export function DeepScanVisualizer({ scan }: { scan: Command }) {
                 </div>
             </ScrollArea>
         </div>
+    );
+}
+interface DailyCoverage {
+    day: string;
+    has_data: boolean;
+}
+
+interface DowntimePieChartProps {
+    probeId: string;
+    startDate: string;
+    endDate: string;
+}
+
+export function DowntimePieChart({ probeId, startDate, endDate }: DowntimePieChartProps) {
+    const { data: coverage, isLoading } = useQuery<DailyCoverage[]>({
+        queryKey: ['coverage', probeId, startDate, endDate],
+        queryFn: () => apiFetch(`/api/v1/analytics/coverage?probe_id=${probeId}&start_time=${startDate}&end_time=${endDate}`),
+    });
+
+    if (isLoading) return <div className="flex justify-center p-6"><Loader2 className="h-6 w-6 animate-spin" /></div>;
+
+    const totalDays = coverage?.length || 0;
+    const daysWithData = coverage?.filter(c => c.has_data).length || 0;
+    const uptimePercent = totalDays ? (daysWithData / totalDays) * 100 : 0;
+    const downtimePercent = 100 - uptimePercent;
+
+    const data = [
+        { name: 'Uptime', value: uptimePercent },
+        { name: 'Downtime', value: downtimePercent },
+    ];
+    const COLORS = ['#10b981', '#ef4444'];
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-sm font-medium">Uptime (Days with Data)</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                        <Pie data={data} cx="50%" cy="50%" innerRadius={40} outerRadius={70} dataKey="value" label>
+                            {data.map((entry, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                        </Pie>
+                        <Tooltip />
+                    </PieChart>
+                </ResponsiveContainer>
+                <div className="text-center text-sm">
+                    <span className="font-bold">{uptimePercent.toFixed(1)}%</span> uptime over {totalDays} days
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+interface HourlyBarChartProps {
+    probeId: string;
+    date: Date;
+    metric?: 'rssi' | 'latency';
+}
+
+export function HourlyBarChart({ probeId, date, metric = 'rssi' }: HourlyBarChartProps) {
+    const start = new Date(date);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(date);
+    end.setHours(23, 59, 59, 999);
+
+    const { data, isLoading, error } = useQuery({
+        queryKey: ['hourly', probeId, start.toISOString(), end.toISOString(), metric],
+        queryFn: async () => {
+            const params = new URLSearchParams({
+                start_time: start.toISOString(),
+                end_time: end.toISOString(),
+                interval: '1 hour',
+                probe_id: probeId,
+            });
+            const url = `/api/v1/analytics/timeseries/${metric === 'rssi' ? 'rssi' : 'latency'}?${params}`;
+            return apiFetch(url);
+        },
+    });
+
+    if (isLoading) {
+        return (
+            <Card>
+                <CardContent className="flex justify-center p-6">
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                </CardContent>
+            </Card>
+        );
+    }
+
+    if (error) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-sm font-medium">Hourly {metric.toUpperCase()}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex flex-col items-center justify-center p-6 text-muted-foreground">
+                        <AlertCircle className="h-8 w-8 mb-2" />
+                        <span className="text-sm">Failed to load hourly data</span>
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    if (!data || data.length === 0) {
+        return (
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-sm font-medium">Hourly {metric.toUpperCase()} on {format(date, 'MMM dd, yyyy')}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex flex-col items-center justify-center p-6 text-muted-foreground">
+                        <span className="text-sm">No data available for this date</span>
+                    </div>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    const chartData = data.map((point: any) => ({
+        hour: format(new Date(point.timestamp), 'HH:00'),
+        value: point.value,
+    }));
+
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-2xl font-medium">Hourly {metric.toUpperCase()} on {format(date, 'MMM dd, yyyy')}</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                    <BarChart data={chartData}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis
+                            dataKey="hour"
+                            label={{ value: 'Hour of Day', position: 'insideBottom', offset: -5 }}
+                        />
+                        <YAxis
+                            domain={metric === 'rssi' ? [-95, -30] : undefined}
+                            reversed={metric === 'rssi'}
+                            label={{ value: metric === 'rssi' ? 'RSSI (dBm)' : 'Latency (ms)', angle: -90, position: 'insideLeft' }}
+                        />
+                        <Tooltip />
+                        <Bar dataKey="value" fill="#3b82f6" />
+                    </BarChart>
+                </ResponsiveContainer>
+            </CardContent>
+        </Card>
     );
 }

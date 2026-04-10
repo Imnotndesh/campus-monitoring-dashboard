@@ -14,7 +14,7 @@ import type {
     Command,
     RoamingSession,
 } from "./types";
-import {apiFetch, fetchBlob} from "../../lib/api";
+import { apiFetch, fetchBlob } from "../../lib/api";
 
 export function useAnalyticsViewModel() {
     const queryClient = useQueryClient();
@@ -22,14 +22,23 @@ export function useAnalyticsViewModel() {
     const [range, setRange] = useState<AnalyticsTimeRange>("24h");
     const [selectedScanId, setSelectedScanId] = useState<number | null>(null);
     const [comparisonProbes, setComparisonProbes] = useState<string[]>([]);
+    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+    const [chartType, setChartType] = useState<"line" | "bar">("line");
 
-    const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 };
+    const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168, "30d": 720, "90d": 2160 };
     const hours = rangeToHours[range];
 
     const getDateRange = () => {
         const end = new Date();
         const start = new Date();
-        start.setHours(end.getHours() - hours);
+        const hours = rangeToHours[range];
+        if (range === "30d" || range === "90d") {
+            start.setUTCHours(0, 0, 0, 0);
+            end.setUTCHours(23, 59, 59, 999);
+            start.setUTCDate(end.getUTCDate() - hours / 24);
+        } else {
+            start.setHours(end.getHours() - hours);
+        }
         return { start: start.toISOString(), end: end.toISOString() };
     };
 
@@ -37,7 +46,10 @@ export function useAnalyticsViewModel() {
         if (range === "1h") return "1 minute";
         if (range === "6h") return "5 minutes";
         if (range === "24h") return "1 hour";
-        return "6 hours";
+        if (range === "7d") return "1 day";
+        if (range === "30d") return "1 day";
+        if (range === "90d") return "1 week";
+        return "1 day";
     };
 
     // 1. Probes
@@ -87,9 +99,9 @@ export function useAnalyticsViewModel() {
                 dataMap.set(p.timestamp, existing);
             });
 
-            return Array.from(dataMap.values()).sort(
-                (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-            );
+            const result = Array.from(dataMap.values()).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+            console.log("Chart data for", range, result);
+            return result;
         },
     });
 
@@ -210,8 +222,9 @@ export function useAnalyticsViewModel() {
         enabled: selectedProbe !== "all",
         refetchInterval: 5000,
     });
+
     const generateAnalyticsReport = async () => {
-        const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 };
+        const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 , "30d":720, "90d":2160};
         const hours = rangeToHours[range];
         const end = new Date();
         const start = new Date();
@@ -241,7 +254,7 @@ export function useAnalyticsViewModel() {
     };
 
     const generateOutageReport = async () => {
-        const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 };
+        const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168, "30d": 720, "90d": 2160 };
         const hours = rangeToHours[range];
         const end = new Date();
         const start = new Date();
@@ -268,7 +281,7 @@ export function useAnalyticsViewModel() {
     };
 
     const generateNetworkBaselineReport = async () => {
-        const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 };
+        const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168, "30d": 720, "90d": 2160 };
         const hours = rangeToHours[range];
         const end = new Date();
         const start = new Date();
@@ -325,7 +338,6 @@ export function useAnalyticsViewModel() {
         },
     });
 
-    // Computed stats
     const normalizedStats = useMemo(() => {
         if (!stats) return null;
 
@@ -366,6 +378,10 @@ export function useAnalyticsViewModel() {
         setSelectedScanId,
         comparisonProbes,
         setComparisonProbes,
+        selectedDate,
+        setSelectedDate,
+        chartType,
+        setChartType,
         probes,
         chartData,
         generateAnalyticsReport,

@@ -1,10 +1,12 @@
-import {type FormEvent, useEffect, useState} from 'react';
+import { type FormEvent, useEffect, useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/card';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Lock, Mail, KeyRound, ShieldCheck, ArrowRight } from 'lucide-react';
+import { Lock, Mail, KeyRound, ShieldCheck, ArrowRight, Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { fetchAuthConfig, type AuthConfig } from '../../lib/api';
 
 export default function LoginPage() {
     const navigate = useNavigate();
@@ -17,6 +19,20 @@ export default function LoginPage() {
     const [code, setCode] = useState('');
     const [loginSuccess, setLoginSuccess] = useState(false);
     const { user, login, verify2FA, loginOAuth } = useAuth();
+
+    // Fetch dynamic auth config
+    const { data: authConfig, isLoading: configLoading, error: configError } = useQuery<AuthConfig>({
+        queryKey: ['auth-config'],
+        queryFn: fetchAuthConfig,
+        staleTime: 5 * 60 * 1000,
+        retry: 1,
+    });
+
+    // Debug logging
+    useEffect(() => {
+        if (authConfig) console.log('[Login] Auth config:', authConfig);
+        if (configError) console.error('[Login] Auth config error:', configError);
+    }, [authConfig, configError]);
 
     useEffect(() => {
         if (!localStorage.getItem('server_url')) {
@@ -62,6 +78,7 @@ export default function LoginPage() {
         }
     };
 
+    // 2FA step – render first
     if (tempToken) {
         return (
             <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background/95 to-primary/5 p-4">
@@ -99,6 +116,34 @@ export default function LoginPage() {
         );
     }
 
+    // Loading state
+    if (configLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+        );
+    }
+
+    // Fallback values if config failed to load (assume local login enabled)
+    const enableLocalLogin = authConfig?.enable_local_login ?? true;
+    const enableRegistration = authConfig?.enable_registration ?? true;
+    const oidcProviders = authConfig?.oidc_providers ?? [];
+
+    // If no login methods available after loading
+    if (!enableLocalLogin && oidcProviders.length === 0) {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-4">
+                <Card className="w-full max-w-md">
+                    <CardHeader>
+                        <CardTitle>No Login Methods Available</CardTitle>
+                        <CardDescription>Please contact your system administrator.</CardDescription>
+                    </CardHeader>
+                </Card>
+            </div>
+        );
+    }
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-background/95 to-primary/5 p-4">
             <Card className="w-full max-w-md border-border/40 shadow-xl bg-card/95 backdrop-blur-sm">
@@ -112,53 +157,71 @@ export default function LoginPage() {
                     <CardDescription>Sign in to your account to continue</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                        <div className="relative">
-                            <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                type="text"
-                                placeholder="Username"
-                                value={username}
-                                onChange={(e) => setUsername(e.target.value)}
-                                className="pl-9"
-                                required
-                            />
+                    {/* Local login form */}
+                    {enableLocalLogin && (
+                        <form onSubmit={handleSubmit} className="space-y-4">
+                            <div className="relative">
+                                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    type="text"
+                                    placeholder="Username"
+                                    value={username}
+                                    onChange={(e) => setUsername(e.target.value)}
+                                    className="pl-9"
+                                    required
+                                />
+                            </div>
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                                <Input
+                                    type="password"
+                                    placeholder="Password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="pl-9"
+                                    required
+                                />
+                            </div>
+                            <Button type="submit" className="w-full">
+                                Sign in
+                                <ArrowRight className="ml-2 h-4 w-4" />
+                            </Button>
+                        </form>
+                    )}
+
+                    {/* Divider if both local and OIDC are present */}
+                    {enableLocalLogin && oidcProviders.length > 0 && (
+                        <div className="relative my-4">
+                            <div className="absolute inset-0 flex items-center">
+                                <span className="w-full border-t" />
+                            </div>
+                            <div className="relative flex justify-center text-xs uppercase">
+                                <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
+                            </div>
                         </div>
-                        <div className="relative">
-                            <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                            <Input
-                                type="password"
-                                placeholder="Password"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="pl-9"
-                                required
-                            />
-                        </div>
-                        <Button type="submit" className="w-full">
-                            Sign in
-                            <ArrowRight className="ml-2 h-4 w-4" />
+                    )}
+
+                    {/* OIDC providers */}
+                    {oidcProviders.map((provider) => (
+                        <Button
+                            key={provider.name}
+                            variant="outline"
+                            className="w-full mt-2"
+                            onClick={() => loginOAuth(provider.name)}
+                        >
+                            Login with {provider.name}
                         </Button>
-                    </form>
+                    ))}
                 </CardContent>
                 <CardFooter className="flex flex-col space-y-2">
-                    <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t" />
+                    {enableRegistration && (
+                        <div className="text-center text-sm text-muted-foreground">
+                            Don't have an account?{' '}
+                            <Button variant="link" className="p-0 h-auto" onClick={() => navigate('/register')}>
+                                Register
+                            </Button>
                         </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-background px-2 text-muted-foreground">Or continue with</span>
-                        </div>
-                    </div>
-                    <Button variant="outline" className="w-full" onClick={() => loginOAuth('pocketid')}>
-                        Login with Pocket ID
-                    </Button>
-                    <div className="text-center text-sm text-muted-foreground">
-                        Don't have an account?{' '}
-                        <Button variant="link" className="p-0 h-auto" onClick={() => navigate('/register')}>
-                            Register
-                        </Button>
-                    </div>
+                    )}
                 </CardFooter>
             </Card>
         </div>
