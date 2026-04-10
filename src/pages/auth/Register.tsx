@@ -4,7 +4,9 @@ import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '../../components/ui/card';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Lock, UserPlus, ArrowRight, Shield } from 'lucide-react';
+import { User, Mail, Lock, UserPlus, ArrowRight, Shield, Loader2 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { fetchAuthConfig } from '../../lib/api';
 
 export default function RegisterPage() {
     const [username, setUsername] = useState('');
@@ -14,7 +16,36 @@ export default function RegisterPage() {
     const [isAdmin, setIsAdmin] = useState(false);
     const { register } = useAuth();
 
-    const enableAdminReg = import.meta.env.VITE_ENABLE_ADMIN_REGISTRATION === 'true';
+    // Fetch auth config from backend
+    const { data: authConfig, isLoading: configLoading } = useQuery({
+        queryKey: ['auth-config'],
+        queryFn: fetchAuthConfig,
+        staleTime: 5 * 60 * 1000,
+    });
+
+    const enableAdminReg = authConfig?.enable_admin_registration ?? false;
+
+    // If registration is disabled globally, show a message
+    if (authConfig && !authConfig.enable_registration) {
+        return (
+            <div className="min-h-screen flex items-center justify-center p-4">
+                <Card className="w-full max-w-md">
+                    <CardHeader>
+                        <CardTitle>Registration Disabled</CardTitle>
+                        <CardDescription>New account registration is currently not allowed.</CardDescription>
+                    </CardHeader>
+                </Card>
+            </div>
+        );
+    }
+
+    if (configLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+        );
+    }
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

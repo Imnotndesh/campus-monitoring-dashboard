@@ -14,7 +14,7 @@ import type {
     Command,
     RoamingSession,
 } from "./types";
-import {apiFetch, fetchBlob} from "../../lib/api";
+import { apiFetch, fetchBlob } from "../../lib/api";
 
 export function useAnalyticsViewModel() {
     const queryClient = useQueryClient();
@@ -22,6 +22,8 @@ export function useAnalyticsViewModel() {
     const [range, setRange] = useState<AnalyticsTimeRange>("24h");
     const [selectedScanId, setSelectedScanId] = useState<number | null>(null);
     const [comparisonProbes, setComparisonProbes] = useState<string[]>([]);
+    const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+    const [chartType, setChartType] = useState<"line" | "bar">("line");
 
     const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 };
     const hours = rangeToHours[range];
@@ -37,7 +39,10 @@ export function useAnalyticsViewModel() {
         if (range === "1h") return "1 minute";
         if (range === "6h") return "5 minutes";
         if (range === "24h") return "1 hour";
-        return "6 hours";
+        if (range === "7d") return "1 day";
+        if (range === "30d") return "1 day";
+        if (range === "90d") return "1 week";
+        return "1 day";
     };
 
     // 1. Probes
@@ -210,8 +215,9 @@ export function useAnalyticsViewModel() {
         enabled: selectedProbe !== "all",
         refetchInterval: 5000,
     });
+
     const generateAnalyticsReport = async () => {
-        const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 };
+        const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 , "30d":720, "90d":2160};
         const hours = rangeToHours[range];
         const end = new Date();
         const start = new Date();
@@ -325,7 +331,6 @@ export function useAnalyticsViewModel() {
         },
     });
 
-    // Computed stats
     const normalizedStats = useMemo(() => {
         if (!stats) return null;
 
@@ -366,6 +371,10 @@ export function useAnalyticsViewModel() {
         setSelectedScanId,
         comparisonProbes,
         setComparisonProbes,
+        selectedDate,
+        setSelectedDate,
+        chartType,
+        setChartType,
         probes,
         chartData,
         generateAnalyticsReport,

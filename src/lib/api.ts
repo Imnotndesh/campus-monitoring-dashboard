@@ -72,3 +72,14 @@ export async function fetchBlob(url: string, options?: RequestInit): Promise<Blo
     }
     return response.blob();
 }
+export interface AuthConfig {
+    enable_local_login: boolean;
+    enable_registration: boolean;
+    enable_admin_registration: boolean; // add
+    require_2fa: boolean;
+    oidc_providers: { name: string; icon: string }[];
+}
+
+export async function fetchAuthConfig(): Promise<AuthConfig> {
+    return apiFetch('/api/v1/auth/config');
+}

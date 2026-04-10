@@ -1,16 +1,15 @@
 import {
     AreaChart,
     Area,
+    BarChart,
+    Bar,
     XAxis,
     YAxis,
     CartesianGrid,
     Tooltip,
     ResponsiveContainer,
     LineChart,
-    Line,
-    BarChart,
-    Bar,
-    Cell,
+    Line, Cell,
 } from "recharts";
 import {
     Activity,
@@ -26,30 +25,40 @@ import {
     Layers,
     BarChart3,
     AlertOctagon,
-    Network, FileText,
+    Network,
+    FileText,
+    LineChart as LineChartIcon,
+    BarChart as BarChartIcon,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Button } from "../../components/ui/button";
+import { Badge } from "../../components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group";
 
 import type { AnalyticsTimeRange } from "./types";
 import { useAnalyticsViewModel } from "./useAnalyticsViewModel";
 import { KpiCard, NoData, DeepScanVisualizer } from "./components";
+import {CoverageCalendar} from "./components/CoverageCalendar";
+import { DowntimePieChart } from "./components";
+import { HourlyBarChart } from "./components";
+
 import {
     DropdownMenu,
     DropdownMenuContent,
     DropdownMenuItem,
     DropdownMenuTrigger
-} from "../../components/ui/dropdown-menu.tsx";
+} from "../../components/ui/dropdown-menu";
 
 export default function Analytics() {
     const vm = useAnalyticsViewModel();
 
     const fmt = (val: any, unit: string, fixed = 0) =>
         val !== null && val !== undefined ? `${Number(val).toFixed(fixed)}${unit}` : "--";
+
+    const ranges: AnalyticsTimeRange[] = ["1h", "6h", "24h", "7d", "30d", "90d"];
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-10">
@@ -80,7 +89,7 @@ export default function Analytics() {
                         </SelectContent>
                     </Select>
                     <div className="flex bg-muted p-1 rounded-md">
-                        {(["1h", "6h", "24h", "7d"] as AnalyticsTimeRange[]).map((r) => (
+                        {ranges.map((r) => (
                             <button
                                 key={r}
                                 onClick={() => vm.setRange(r)}
@@ -92,6 +101,14 @@ export default function Analytics() {
                             </button>
                         ))}
                     </div>
+                    <ToggleGroup type="single" value={vm.chartType} onValueChange={(val) => val && vm.setChartType(val as "line" | "bar")}>
+                        <ToggleGroupItem value="line" aria-label="Line Chart">
+                            <LineChartIcon className="h-4 w-4" />
+                        </ToggleGroupItem>
+                        <ToggleGroupItem value="bar" aria-label="Bar Chart">
+                            <BarChartIcon className="h-4 w-4" />
+                        </ToggleGroupItem>
+                    </ToggleGroup>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                             <Button variant="outline" size="sm">
@@ -156,8 +173,10 @@ export default function Analytics() {
                     {vm.selectedProbe !== "all" && <TabsTrigger value="diagnostics">Diagnostics</TabsTrigger>}
                     {vm.selectedProbe !== "all" && <TabsTrigger value="deepscan">Deep Scan</TabsTrigger>}
                     {vm.selectedProbe === "all" && <TabsTrigger value="comparison">Compare Probes</TabsTrigger>}
+                    <TabsTrigger value="coverage">Coverage</TabsTrigger>
                 </TabsList>
 
+                {/* Overview Tab – with dynamic chart type */}
                 <TabsContent value="overview" className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-7">
                         <Card className="col-span-4">
@@ -167,35 +186,48 @@ export default function Analytics() {
                             <CardContent className="h-[300px]">
                                 {vm.chartData.length > 0 ? (
                                     <ResponsiveContainer width="100%" height="100%">
-                                        <AreaChart data={vm.chartData}>
-                                            <defs>
-                                                <linearGradient id="colorLatency" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                                                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                            <XAxis
-                                                dataKey="timestamp"
-                                                tickFormatter={(t) =>
-                                                    new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                                                }
-                                                minTickGap={30}
-                                                fontSize={10}
-                                            />
-                                            <YAxis fontSize={12} />
-                                            <Tooltip
-                                                labelFormatter={(t) => new Date(t).toLocaleString()}
-                                                contentStyle={{ backgroundColor: "hsl(var(--card))" }}
-                                            />
-                                            <Area
-                                                type="monotone"
-                                                dataKey="latency"
-                                                connectNulls
-                                                stroke="#3b82f6"
-                                                fill="url(#colorLatency)"
-                                            />
-                                        </AreaChart>
+                                        {vm.chartType === "line" ? (
+                                            <AreaChart data={vm.chartData}>
+                                                <defs>
+                                                    <linearGradient id="colorLatency" x1="0" y1="0" x2="0" y2="1">
+                                                        <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
+                                                        <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                                                    </linearGradient>
+                                                </defs>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                                <XAxis
+                                                    dataKey="timestamp"
+                                                    tickFormatter={(t) =>
+                                                        new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                                                    }
+                                                    minTickGap={30}
+                                                    fontSize={10}
+                                                />
+                                                <YAxis fontSize={12} />
+                                                <Tooltip
+                                                    labelFormatter={(t) => new Date(t).toLocaleString()}
+                                                    contentStyle={{ backgroundColor: "hsl(var(--card))" }}
+                                                />
+                                                <Area
+                                                    type="monotone"
+                                                    dataKey="latency"
+                                                    connectNulls
+                                                    stroke="#3b82f6"
+                                                    fill="url(#colorLatency)"
+                                                />
+                                            </AreaChart>
+                                        ) : (
+                                            <BarChart data={vm.chartData}>
+                                                <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                                <XAxis dataKey="timestamp" tickFormatter={(t) => new Date(t).toLocaleDateString()} fontSize={10} />
+                                                <YAxis fontSize={12} />
+                                                <Tooltip
+                                                    labelFormatter={(t) => new Date(t).toLocaleString()}
+                                                    contentStyle={{ backgroundColor: "hsl(var(--card))" }}
+                                                />
+                                                <Bar dataKey="latency" fill="#3b82f6" />
+                                            </BarChart>
+                                        )}
                                     </ResponsiveContainer>
                                 ) : (
                                     <NoData />
@@ -235,6 +267,7 @@ export default function Analytics() {
                     </div>
                 </TabsContent>
 
+                {/* Spectrum & APs (unchanged) */}
                 <TabsContent value="spectrum" className="space-y-4">
                     <div className="grid gap-4 md:grid-cols-2">
                         <Card>
@@ -625,6 +658,40 @@ export default function Analytics() {
                             )}
                         </CardContent>
                     </Card>
+                </TabsContent>
+
+                {/* New Coverage Tab */}
+                <TabsContent value="coverage" className="space-y-4">
+                    <div className="flex flex-col md:flex-row gap-4">
+                        {/* Left: calendar – natural width */}
+                        <div className="md:w-auto">
+                            <CoverageCalendar
+                                probeId={vm.selectedProbe}
+                                yearMonth={new Date()}
+                                onDateSelect={(date) => vm.setSelectedDate(date)}
+                            />
+                        </div>
+                        {/* Right: chart – takes remaining space */}
+                        <div className="flex-1">
+                            {vm.selectedDate && vm.selectedProbe !== "all" && (
+                                <HourlyBarChart probeId={vm.selectedProbe} date={vm.selectedDate} metric="rssi" />
+                            )}
+                            {vm.selectedDate && vm.selectedProbe === "all" && (
+                                <Card>
+                                    <CardContent className="flex items-center justify-center p-6 text-muted-foreground">
+                                        Select a specific probe to view hourly breakdown.
+                                    </CardContent>
+                                </Card>
+                            )}
+                            {!vm.selectedDate && vm.selectedProbe !== "all" && (
+                                <Card>
+                                    <CardContent className="flex items-center justify-center p-6 text-muted-foreground">
+                                        Click a date on the calendar to see hourly data.
+                                    </CardContent>
+                                </Card>
+                            )}
+                        </div>
+                    </div>
                 </TabsContent>
             </Tabs>
         </div>

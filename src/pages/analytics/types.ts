@@ -1,4 +1,4 @@
-export type AnalyticsTimeRange = "1h" | "6h" | "24h" | "7d";
+export type AnalyticsTimeRange = "1h" | "6h" | "24h" | "7d" | "30d" | "90d";
 
 export type Probe = { probe_id: string; location: string; building?: string; status?: string };
 
