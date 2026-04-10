@@ -188,13 +188,16 @@ export default function Analytics() {
                                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                                 <XAxis
                                                     dataKey="timestamp"
+                                                    label={{value: "Timestamp", offset:-2,position: 'insideBottom'}}
                                                     tickFormatter={(t) =>
                                                         new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
                                                     }
                                                     minTickGap={30}
                                                     fontSize={10}
                                                 />
-                                                <YAxis fontSize={12} />
+                                                <YAxis
+                                                    label={{value: "Latency (ms)", angle:-90, offset: 5}}
+                                                    fontSize={12} />
                                                 <Tooltip
                                                     labelFormatter={(t) => new Date(t).toLocaleString()}
                                                     contentStyle={{ backgroundColor: "hsl(var(--card))" }}
@@ -234,8 +237,10 @@ export default function Analytics() {
                                     <ResponsiveContainer width="100%" height="100%">
                                         <LineChart data={vm.chartData}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                            <XAxis dataKey="timestamp" hide />
-                                            <YAxis domain={[-95, -30]} fontSize={12} />
+                                            <XAxis dataKey="timestamp" tickFormatter={(t) =>
+                                                new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                                            } label={{value: "Timestamp", offset:-2,position: 'insideBottom'}}/>
+                                            <YAxis domain={[-95, -30]} fontSize={12} label={{value: "RSSI", angle:-90, offset: 5}} />
                                             <Tooltip
                                                 labelFormatter={(t) => new Date(t).toLocaleString()}
                                                 contentStyle={{ backgroundColor: "hsl(var(--card))" }}
