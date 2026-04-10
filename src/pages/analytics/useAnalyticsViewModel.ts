@@ -25,13 +25,20 @@ export function useAnalyticsViewModel() {
     const [selectedDate, setSelectedDate] = useState<Date | null>(null);
     const [chartType, setChartType] = useState<"line" | "bar">("line");
 
-    const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 };
+    const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168, "30d": 720, "90d": 2160 };
     const hours = rangeToHours[range];
 
     const getDateRange = () => {
         const end = new Date();
         const start = new Date();
-        start.setHours(end.getHours() - hours);
+        const hours = rangeToHours[range];
+        if (range === "30d" || range === "90d") {
+            start.setUTCHours(0, 0, 0, 0);
+            end.setUTCHours(23, 59, 59, 999);
+            start.setUTCDate(end.getUTCDate() - hours / 24);
+        } else {
+            start.setHours(end.getHours() - hours);
+        }
         return { start: start.toISOString(), end: end.toISOString() };
     };
 
@@ -92,9 +99,9 @@ export function useAnalyticsViewModel() {
                 dataMap.set(p.timestamp, existing);
             });
 
-            return Array.from(dataMap.values()).sort(
-                (a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-            );
+            const result = Array.from(dataMap.values()).sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+            console.log("Chart data for", range, result);
+            return result;
         },
     });
 
@@ -247,7 +254,7 @@ export function useAnalyticsViewModel() {
     };
 
     const generateOutageReport = async () => {
-        const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 };
+        const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168, "30d": 720, "90d": 2160 };
         const hours = rangeToHours[range];
         const end = new Date();
         const start = new Date();
@@ -274,7 +281,7 @@ export function useAnalyticsViewModel() {
     };
 
     const generateNetworkBaselineReport = async () => {
-        const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168 };
+        const rangeToHours = { "1h": 1, "6h": 6, "24h": 24, "7d": 168, "30d": 720, "90d": 2160 };
         const hours = rangeToHours[range];
         const end = new Date();
         const start = new Date();

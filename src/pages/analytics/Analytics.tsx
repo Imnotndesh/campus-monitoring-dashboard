@@ -16,33 +16,22 @@ import {
     Calendar,
     Signal,
     TrendingDown,
-    Radio,
-    Search,
-    Trash2,
-    Wifi,
-    ArrowDownUp,
-    Loader2,
-    Layers,
-    BarChart3,
-    AlertOctagon,
-    Network,
     FileText,
     LineChart as LineChartIcon,
     BarChart as BarChartIcon,
+    BarChart3, Network, AlertOctagon, ArrowDownUp, Wifi, Search, Loader2, Radio,
+    Trash2, Layers,
 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Card, CardContent, CardHeader, CardTitle} from "../../components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../components/ui/select";
 import { Button } from "../../components/ui/button";
-import { Badge } from "../../components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "../../components/ui/toggle-group";
 
 import type { AnalyticsTimeRange } from "./types";
 import { useAnalyticsViewModel } from "./useAnalyticsViewModel";
 import { KpiCard, NoData, DeepScanVisualizer } from "./components";
 import {CoverageCalendar} from "./components/CoverageCalendar";
-import { DowntimePieChart } from "./components";
 import { HourlyBarChart } from "./components";
 
 import {
@@ -51,6 +40,8 @@ import {
     DropdownMenuItem,
     DropdownMenuTrigger
 } from "../../components/ui/dropdown-menu";
+import {ScrollArea} from "../../components/ui/scroll-area.tsx";
+import {Badge} from "../../components/ui/badge.tsx";
 
 export default function Analytics() {
     const vm = useAnalyticsViewModel();
