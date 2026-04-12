@@ -273,7 +273,7 @@ export default function Analytics() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="h-[300px]">
-                                {vm.channels.length > 0 ? (
+                                {vm.channels && vm.channels.length > 0 ? (
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={vm.channels}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -303,7 +303,7 @@ export default function Analytics() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                {vm.congestion.length > 0 ? (
+                                {vm.congestion && vm.congestion.length > 0 ? (
                                     <ScrollArea className="h-[300px]">
                                         <div className="space-y-1">
                                             <div className="grid grid-cols-4 text-xs font-semibold text-muted-foreground px-4 py-2 border-b">
@@ -349,7 +349,7 @@ export default function Analytics() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            {vm.apData.length > 0 ? (
+                            {vm.apData && vm.apData.length > 0 ? (
                                 <ScrollArea className="h-[300px]">
                                     <div className="space-y-2">
                                         {vm.apData.map((ap, i) => (

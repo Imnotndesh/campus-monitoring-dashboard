@@ -314,11 +314,13 @@ export function OfflineProbesWidget() {
 }
 
 export function UnenrolledCountWidget() {
-    const { data: unenrolled = [], isLoading } = useQuery({
+    const { data: unenrolled, isLoading } = useQuery({
         queryKey: ["fleet-unenrolled-probes"],
         queryFn: async () => await apiFetch("/api/v1/fleet/unenrolled-probes"),
         refetchInterval: 15000,
     });
+
+    const unenrolledCount = Array.isArray(unenrolled) ? unenrolled.length : 0;
 
     if (isLoading) {
         return (
@@ -337,20 +339,23 @@ export function UnenrolledCountWidget() {
                 <ServerOff className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent className="space-y-3">
-                <div className="text-2xl font-bold">{unenrolled.length}</div>
+                <div className="text-2xl font-bold">{unenrolledCount}</div>
                 <p className="text-xs text-muted-foreground">Probes awaiting fleet enrollment</p>
-                <Progress value={unenrolled.length > 0 ? 100 : 0} className="h-1.5 opacity-50" />
+                <Progress value={unenrolledCount > 0 ? 100 : 0} className="h-1.5 opacity-50" />
             </CardContent>
         </Card>
     );
 }
 
 export function UnenrolledListWidget({ onEnrollClick }: { onEnrollClick: (probe: any) => void }) {
-    const { data: unenrolled = [], isLoading } = useQuery({
+    const { data: unenrolled, isLoading } = useQuery({
         queryKey: ["fleet-unenrolled-probes"],
         queryFn: async () => await apiFetch("/api/v1/fleet/unenrolled-probes"),
         refetchInterval: 10000,
     });
+
+    // Ensure unenrolled is an array
+    const unenrolledList = Array.isArray(unenrolled) ? unenrolled : [];
 
     return (
         <Card>
@@ -362,7 +367,7 @@ export function UnenrolledListWidget({ onEnrollClick }: { onEnrollClick: (probe:
                     <div className="flex items-center justify-center h-[200px]">
                         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
-                ) : unenrolled.length === 0 ? (
+                ) : unenrolledList.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-[200px] text-muted-foreground">
                         <ServerOff className="h-8 w-8 mb-2 opacity-50" />
                         <p className="text-sm">No new probes detected</p>
@@ -370,7 +375,7 @@ export function UnenrolledListWidget({ onEnrollClick }: { onEnrollClick: (probe:
                 ) : (
                     <ScrollArea className="h-[200px] px-4">
                         <div className="space-y-3 pb-4">
-                            {unenrolled.map((probe: any) => (
+                            {unenrolledList.map((probe: any) => (
                                 <div
                                     key={probe.probe_id}
                                     className="flex items-center justify-between p-3 border rounded-lg bg-muted/30"
