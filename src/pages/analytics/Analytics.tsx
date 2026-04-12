@@ -188,13 +188,16 @@ export default function Analytics() {
                                                 <CartesianGrid strokeDasharray="3 3" vertical={false} />
                                                 <XAxis
                                                     dataKey="timestamp"
+                                                    label={{value: "Timestamp", offset:-2,position: 'insideBottom'}}
                                                     tickFormatter={(t) =>
                                                         new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
                                                     }
                                                     minTickGap={30}
                                                     fontSize={10}
                                                 />
-                                                <YAxis fontSize={12} />
+                                                <YAxis
+                                                    label={{value: "Latency (ms)", angle:-90, offset: 5}}
+                                                    fontSize={12} />
                                                 <Tooltip
                                                     labelFormatter={(t) => new Date(t).toLocaleString()}
                                                     contentStyle={{ backgroundColor: "hsl(var(--card))" }}
@@ -234,8 +237,10 @@ export default function Analytics() {
                                     <ResponsiveContainer width="100%" height="100%">
                                         <LineChart data={vm.chartData}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                                            <XAxis dataKey="timestamp" hide />
-                                            <YAxis domain={[-95, -30]} fontSize={12} />
+                                            <XAxis dataKey="timestamp" tickFormatter={(t) =>
+                                                new Date(t).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+                                            } label={{value: "Timestamp", offset:-2,position: 'insideBottom'}}/>
+                                            <YAxis domain={[-95, -30]} fontSize={12} label={{value: "RSSI", angle:-90, offset: 5}} />
                                             <Tooltip
                                                 labelFormatter={(t) => new Date(t).toLocaleString()}
                                                 contentStyle={{ backgroundColor: "hsl(var(--card))" }}
@@ -268,7 +273,7 @@ export default function Analytics() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="h-[300px]">
-                                {vm.channels.length > 0 ? (
+                                {vm.channels && vm.channels.length > 0 ? (
                                     <ResponsiveContainer width="100%" height="100%">
                                         <BarChart data={vm.channels}>
                                             <CartesianGrid strokeDasharray="3 3" vertical={false} />
@@ -298,7 +303,7 @@ export default function Analytics() {
                                 </CardTitle>
                             </CardHeader>
                             <CardContent>
-                                {vm.congestion.length > 0 ? (
+                                {vm.congestion && vm.congestion.length > 0 ? (
                                     <ScrollArea className="h-[300px]">
                                         <div className="space-y-1">
                                             <div className="grid grid-cols-4 text-xs font-semibold text-muted-foreground px-4 py-2 border-b">
@@ -344,7 +349,7 @@ export default function Analytics() {
                             </CardTitle>
                         </CardHeader>
                         <CardContent>
-                            {vm.apData.length > 0 ? (
+                            {vm.apData && vm.apData.length > 0 ? (
                                 <ScrollArea className="h-[300px]">
                                     <div className="space-y-2">
                                         {vm.apData.map((ap, i) => (
